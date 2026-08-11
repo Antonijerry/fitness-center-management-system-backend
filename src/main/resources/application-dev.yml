@@ -15,6 +15,17 @@ spring:
       hibernate:
         format_sql: true
 
+#Flyway becomes responsible for schema changes.
+#  Flyway = database structure authority
+  #Hibernate = database mapping/validation
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+    validate-on-migrate: true
+    clean-disabled: true
+
   sql:
     init:
       mode: never
@@ -25,3 +36,10 @@ logging:
     com.fitnesscenter: DEBUG
     org.springframework.web: INFO
     org.hibernate.SQL: DEBUG
+
+#JWT config
+app:
+  jwt:
+    secret: ${JWT_SECRET:3BGLMUCggki1Q4aLMbMclUpa95BY7dU0Mxhl8pOgYKKGmacVRFAhex1yyr4xyCYNiaT6UXdWQkkTqK0rGePhNy}
+    access-token-expiration: 900000
+    refresh-token-expiration: 604800000
