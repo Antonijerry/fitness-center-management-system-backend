@@ -496,9 +496,76 @@ src/main/resources/db/migration/
 test all apis
 
 
+##git commit for each feature
+from intellij view>tool window > terminal > select git bash and run : git init, git status, git add ., and git commit -m "chore: member-profile added to fitness management backend"
+This is important because from this point onward we can make each major feature a separate commit.
 
 
+##TRAINING SESSIONS / PERSONAL TRAINING APPOINTMENTS:::::::::::::::::::::::::::::::::::::::::::::::
+A training session represents a scheduled interaction between a trainer and member.
+example:
+Member: John Doe
+Trainer: Michael Smith
 
+Date:       2026-08-15
+Start:      10:00
+End:        11:00
+Type:       PERSONAL_TRAINING
+Status:     SCHEDULED
+Location:   Gym Floor
+
+Now we build the module that allows a trainer to schedule and manage actual training sessions with members.
+Trainer + Member
+       │
+       ▼
+Training Session
+       │
+       ├── Schedule
+       ├── Confirm
+       ├── Start
+       ├── Complete
+       └── Cancel
+
+The system should prevent:
+
+assigning a non-existent trainer
+assigning a non-existent member
+using an inactive trainer
+scheduling with no trainer/member relationship
+overlapping trainer sessions
+overlapping member sessions
+completing an already cancelled session
+starting an already completed session
+invalid time ranges
+
+
+src/main/java/com/fitnesscenter/training/
+├── controller/
+│   └── TrainingSessionController.java
+│
+├── dto/
+│   ├── CreateTrainingSessionRequest.java
+│   ├── UpdateTrainingSessionRequest.java
+│   └── TrainingSessionResponse.java
+│
+├── entity/
+│   ├── TrainingSession.java
+│   ├── TrainingSessionStatus.java
+│   └── TrainingSessionType.java
+│
+├── mapper/
+│   └── TrainingSessionMapper.java
+│
+├── repository/
+│   └── TrainingSessionRepository.java
+│
+└── service/
+    ├── TrainingSessionService.java
+    └── TrainingSessionServiceImpl.java
+Migration:
+
+src/main/resources/db/migration/
+└── V12__create_training_sessions.sql
 
 
 
@@ -509,7 +576,6 @@ test all apis
 ##git commit for each feature
 from intellij view>tool window > terminal > select git bash and run : git init, git status, git add ., and git commit -m "chore: member-profile added to fitness management backend"
 This is important because from this point onward we can make each major feature a separate commit.
-
 
 
 
