@@ -324,15 +324,52 @@ src/main/java/com/fitnesscenter/member/
 and add: src/main/resources/db/migration/
           └── V8__create_member_profiles.sql
 
-
-
+test each controller endpoint using postman/swagger
 
 ##git commit for each feature
-from intellij view>tool window > terminal > select git bash and run : git init, git status, git add ., and git commit -m "chore: initialize fitness management backend"
+from intellij view>tool window > terminal > select git bash and run : git init, git status, git add ., and git commit -m "chore: member-profile added to fitness management backend"
+This is important because from this point onward we can make each major feature a separate commit.
+
+
+TRAINER & STAFF MANAGEMENT:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+                         User
+                          │
+              ┌───────────┴───────────┐
+              │                       │
+              ▼                       ▼
+       MemberProfile            TrainerProfile  A trainer profile should belong to a user who has the: TRAINER role
+              │                       │
+              ▼                       ▼
+         Membership              Assignments
+                                      │
+                                      ▼
+                                  Members
+
+Database:
+src/main/resources/db/migration/
+└── V9__create_trainer_profiles.sql
+
+TEST: first login with admin user, assign a user the role of a trainer; then create the trainer profile using post and the right url
+test for other endpoints
+
+##git commit for each feature
+from intellij view>tool window > terminal > select git bash and run : git init, git status, git add ., and git commit -m "chore: member-profile added to fitness management backend"
 This is important because from this point onward we can make each major feature a separate commit.
 
 
 
+
+
+
+
+
+
+
+
+##git commit for each feature
+from intellij view>tool window > terminal > select git bash and run : git init, git status, git add ., and git commit -m "chore: member-profile added to fitness management backend"
+This is important because from this point onward we can make each major feature a separate commit.
 
 
 
