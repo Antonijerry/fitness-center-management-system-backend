@@ -358,6 +358,77 @@ from intellij view>tool window > terminal > select git bash and run : git init, 
 This is important because from this point onward we can make each major feature a separate commit.
 
 
+TRAINER ↔ MEMBER ASSIGNMENT:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+used to assign a trainer to a registered member
+
+TrainerProfile
+      │
+      │
+      ▼
+TrainerMemberAssignment
+      ▲
+      │
+      │
+MemberProfile
+
+an assignment will contain:
+id
+trainer
+member
+assignedAt
+endedAt
+status
+notes
+primaryTrainer
+
+this allows:
+Member A
+   │
+   ├── Trainer X → ended
+   │
+   └── Trainer Y → active
+instead of destroying historical information.
+
+
+src/main/java/com/fitnesscenter/assignment/
+├── controller/
+│   └── TrainerMemberAssignmentController.java
+│
+├── dto/
+│   ├── CreateAssignmentRequest.java
+│   ├── AssignmentResponse.java
+│   └── UpdateAssignmentRequest.java
+│
+├── entity/
+│   ├── TrainerMemberAssignment.java
+│   └── AssignmentStatus.java
+│
+├── mapper/
+│   └── AssignmentMapper.java
+│
+├── repository/
+│   └── TrainerMemberAssignmentRepository.java
+│
+└── service/
+    ├── TrainerMemberAssignmentService.java
+    └── TrainerMemberAssignmentServiceImpl.java
+
+
+Database Migration:
+src/main/resources/db/migration/
+└── V10__create_trainer_member_assignments.sql
+
+TEST for all controllers endpoints
+
+##git commit for each feature
+from intellij view>tool window > terminal > select git bash and run : git init, git status, git add ., and git commit -m "chore: member-profile added to fitness management backend"
+This is important because from this point onward we can make each major feature a separate commit.
+
+
+
+
+
+
 
 
 
@@ -370,8 +441,6 @@ This is important because from this point onward we can make each major feature 
 ##git commit for each feature
 from intellij view>tool window > terminal > select git bash and run : git init, git status, git add ., and git commit -m "chore: member-profile added to fitness management backend"
 This is important because from this point onward we can make each major feature a separate commit.
-
-
 
 
 
