@@ -22,6 +22,7 @@ import java.util.Set;
 @NoArgsConstructor
 public class User extends BaseEntity {
 
+
     @Column(
             name = "first_name",
             nullable = false,

@@ -203,3 +203,158 @@ ADMIN
        └── MEMBER
 for role authorization, we need @EnableMethodSecurity in other to use this @PreAuthorize(...) e.g @PreAuthorize("hasRole('ADMIN')") means for admin, @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')") means admin or manager
 protect the userController with @PreAuthorize()
+
+##MEMBERSHIP MANAGEMENT::::::::::::::::::::::::::::::::::::::::::::::::::::
+ADMIN / MANAGER
+       │
+       ▼
+Membership Plans
+       │
+       ├── BASIC
+       ├── STANDARD
+       ├── PREMIUM
+       └── CUSTOM
+              │
+              ▼
+           Member
+              │
+              ▼
+         Membership
+              │
+      ┌───────┼────────┐
+      ▼       ▼        ▼
+   ACTIVE   EXPIRED  CANCELLED
+              │
+              ▼
+        Access Control
+first create src/main/java/com/fitnesscenter/membership/ and it will have the following structure
+membership/
+├── controller/
+│   ├── MembershipController.java
+│   └── MembershipPlanController.java
+│
+├── dto/
+│   ├── CreateMembershipPlanRequest.java
+│   ├── UpdateMembershipPlanRequest.java
+│   ├── MembershipPlanResponse.java
+│   ├── CreateMembershipRequest.java
+│   ├── UpdateMembershipRequest.java
+│   └── MembershipResponse.java
+│
+├── entity/
+│   ├── MembershipPlan.java
+│   ├── Membership.java
+│   ├── MembershipStatus.java
+│   └── MembershipType.java
+│
+├── mapper/
+│   └── MembershipMapper.java
+│
+├── repository/
+│   ├── MembershipPlanRepository.java
+│   └── MembershipRepository.java
+│
+└── service/
+    ├── MembershipPlanService.java
+    ├── MembershipPlanServiceImpl.java
+    ├── MembershipService.java
+    └── MembershipServiceImpl.java
+
+NB: at the end of the service and controller, we add a database migration like V5__create_membership_tables.sql, V6__seed_membership_plans.sql(We need initial membership-plans for development/testing.) because we dont want the spring.jpa.hibernate.ddl-auto to update it for us:
+test::::
+first authenticate as an admin: copy access token from login as a user, assign the user a role as admin, you can use the admin user access token to authenticate any request on membership controller e.g
+ GET /api/v1/membership-plans and copy the access token in order to get all the membership plans we populated before
+for membership testing::
+
+| Method  | Endpoint                            | Purpose                | Roles                        |
+| ------- | ----------------------------------- | ---------------------- | ---------------------------- |
+| `POST`  | `/api/v1/memberships`               | Create membership      | ADMIN, MANAGER, RECEPTIONIST |
+| `GET`   | `/api/v1/memberships/{id}`          | Get membership         | ADMIN, MANAGER, RECEPTIONIST |
+| `GET`   | `/api/v1/memberships`               | Get all                | ADMIN, MANAGER, RECEPTIONIST |
+| `GET`   | `/api/v1/memberships/user/{userId}` | Get user's memberships | ADMIN, MANAGER, RECEPTIONIST |
+| `PATCH` | `/api/v1/memberships/{id}/activate` | Activate               | ADMIN, MANAGER, RECEPTIONIST |
+| `PATCH` | `/api/v1/memberships/{id}/suspend`  | Suspend                | ADMIN, MANAGER               |
+| `PATCH` | `/api/v1/memberships/{id}/cancel`   | Cancel                 | ADMIN, MANAGER               |
+
+##git commit for each feature
+from intellij view>tool window > terminal > select git bash and run : git init, git status, git add ., and git commit -m "chore: initialize fitness management backend"
+This is important because from this point onward we can make each major feature a separate commit.
+
+
+MEMBER MANAGEMENT & MEMBER PROFILE::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+User A User is a system account.
+ │
+ │ authentication / authorization
+ ▼
+MemberProfile      A MemberProfile represents the person's relationship with the fitness center.
+ │
+ ├── membership history
+ ├── emergency contact
+ ├── fitness goals
+ ├── trainer assignment
+ ├── attendance
+ └── progress
+
+
+src/main/java/com/fitnesscenter/member/
+├── controller/
+│   └── MemberController.java
+│
+├── dto/
+│   ├── CreateMemberProfileRequest.java
+│   ├── UpdateMemberProfileRequest.java
+│   ├── MemberProfileResponse.java
+│   ├── EmergencyContactRequest.java
+│   └── EmergencyContactResponse.java
+│
+├── entity/
+│   ├── MemberProfile.java
+│   └── MemberStatus.java
+│
+├── mapper/
+│   └── MemberMapper.java
+│
+├── repository/
+│   └── MemberProfileRepository.java
+│
+└── service/
+    ├── MemberService.java
+    └── MemberServiceImpl.java
+
+and add: src/main/resources/db/migration/
+          └── V8__create_member_profiles.sql
+
+
+
+
+##git commit for each feature
+from intellij view>tool window > terminal > select git bash and run : git init, git status, git add ., and git commit -m "chore: initialize fitness management backend"
+This is important because from this point onward we can make each major feature a separate commit.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

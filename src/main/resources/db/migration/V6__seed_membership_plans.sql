@@ -1,0 +1,49 @@
+INSERT INTO membership_plans (
+    name,
+    description,
+    type,
+    price,
+    duration_in_days,
+    max_visits_per_month,
+    active,
+    auto_renewable,
+    created_at,
+    updated_at
+)
+VALUES
+    (
+        'Basic',
+        'Basic gym access membership',
+        'BASIC',
+        15000.00,
+        30,
+        30,
+        TRUE,
+        FALSE,
+        CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'Standard',
+        'Standard gym membership with extended access',
+        'STANDARD',
+        30000.00,
+        30,
+        60,
+        TRUE,
+        FALSE,
+        CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        'Premium',
+        'Premium membership with unlimited monthly access',
+        'PREMIUM',
+        50000.00,
+        30,
+        9999,
+        TRUE,
+        TRUE,
+        CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP
+    );
