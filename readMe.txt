@@ -425,7 +425,75 @@ from intellij view>tool window > terminal > select git bash and run : git init, 
 This is important because from this point onward we can make each major feature a separate commit.
 
 
+##ATTENDANCE / CHECK-IN MANAGEMENT:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+The goal is to make it production-ready enough to support:
 
+Member check-in
+Member check-out
+Duplicate check-in prevention
+Membership validation
+Attendance history
+Daily attendance
+Attendance duration
+Check-in method
+Attendance status
+Administrative reporting
+
+MemberProfile
+      │
+      │ 1
+      ▼
+Attendance
+      │
+      ├── checkInTime
+      ├── checkOutTime
+      ├── date
+      ├── status
+      ├── method
+      └── notes
+
+
+A member can have many attendance records:
+
+Member
+ │
+ ├── 2026-08-10 → CHECKED_OUT
+ ├── 2026-08-11 → CHECKED_OUT
+ ├── 2026-08-12 → CHECKED_IN
+ └── ...
+
+
+ src/main/java/com/fitnesscenter/attendance/
+ ├── controller/
+ │   └── AttendanceController.java
+ │
+ ├── dto/
+ │   ├── CheckInRequest.java
+ │   ├── AttendanceResponse.java
+ │   └── AttendanceSummaryResponse.java
+ │
+ ├── entity/
+ │   ├── Attendance.java
+ │   ├── AttendanceMethod.java
+ │   └── AttendanceStatus.java
+ │
+ ├── mapper/
+ │   └── AttendanceMapper.java
+ │
+ ├── repository/
+ │   └── AttendanceRepository.java
+ │
+ └── service/
+     ├── AttendanceService.java
+     └── AttendanceServiceImpl.java
+
+
+Migration:
+
+src/main/resources/db/migration/
+└── V10__create_attendance.sql
+
+test all apis
 
 
 
