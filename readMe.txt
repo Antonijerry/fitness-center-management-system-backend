@@ -568,6 +568,70 @@ src/main/resources/db/migration/
 └── V12__create_training_sessions.sql
 
 
+##WORKOUT PROGRAMS & EXERCISES::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+Now we add the actual workout prescription:
+Trainer
+   │
+   ▼
+Workout Program
+   │
+   ├── Day 1
+   │     ├── Exercise
+   │     ├── Exercise
+   │     └── Exercise
+   │
+   ├── Day 2
+   │     ├── Exercise
+   │     └── Exercise
+   │
+   └── Day 3
+         └── Exercise
+We will build this as a normalized production-ready design, rather than putting exercises into a JSON column.
+
+src/main/java/com/fitnesscenter/workout/
+├── controller/
+│   ├── ExerciseController.java
+│   └── WorkoutProgramController.java
+│
+├── dto/
+│   ├── CreateExerciseRequest.java
+│   ├── ExerciseResponse.java
+│   ├── CreateWorkoutProgramRequest.java
+│   ├── UpdateWorkoutProgramRequest.java
+│   ├── WorkoutProgramResponse.java
+│   ├── AddWorkoutExerciseRequest.java
+│   └── WorkoutExerciseResponse.java
+│
+├── entity/
+│   ├── Exercise.java
+│   ├── ExerciseCategory.java
+│   ├── WorkoutProgram.java
+│   ├── WorkoutProgramDay.java
+│   ├── WorkoutExercise.java
+│   ├── WorkoutProgramStatus.java
+│   └── WorkoutExerciseType.java
+│
+├── mapper/
+│   ├── ExerciseMapper.java
+│   └── WorkoutProgramMapper.java
+│
+├── repository/
+│   ├── ExerciseRepository.java
+│   ├── WorkoutProgramRepository.java
+│   ├── WorkoutProgramDayRepository.java
+│   └── WorkoutExerciseRepository.java
+│
+└── service/
+    ├── ExerciseService.java
+    ├── ExerciseServiceImpl.java
+    ├── WorkoutProgramService.java
+    └── WorkoutProgramServiceImpl.java
+
+Migration:
+
+src/main/resources/db/migration/
+└── V12__create_workout_programs.sql
+
 
 
 
