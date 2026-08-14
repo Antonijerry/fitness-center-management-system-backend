@@ -633,6 +633,126 @@ src/main/resources/db/migration/
 └── V12__create_workout_programs.sql
 
 
+##WORKOUT EXECUTION & PROGRESS TRACKING::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+record what a member actually did.
+We will now build:
+
+Workout Program
+      ↓
+Workout Day
+      ↓
+Prescribed Exercise
+      ↓
+Workout Session
+      ↓
+Performed Exercise
+      ↓
+Performed Sets
+      ↓
+Progress / Volume / PRs
+
+The important distinction is:
+
+WorkoutExercise
+= what the trainer prescribed
+
+WorkoutSession
+= the member's actual workout visit
+
+WorkoutExerciseLog
+= what the member actually performed
+
+WorkoutSetLog
+= individual sets performed
+
+src/main/java/com/fitnesscenter/workout/
+│
+├── controller/
+│
+├── dto/
+│
+├── entity/
+│
+├── mapper/
+│
+├── repository/
+│
+└── service/
+V13__create_workout_execution_tables.sql
+ test all end points. at this point the system now have a complete chain architecture i.e.
+ MEMBER
+   │
+   ▼
+ TRAINER ASSIGNMENT
+   │
+   ▼
+ WORKOUT PROGRAM
+   │
+   ├── Program Day
+   │      │
+   │      └── Workout Exercise
+   │
+   ▼
+ ACTIVE PROGRAM
+   │
+   ▼
+ WORKOUT SESSION
+   │
+   ├── Exercise Log
+   │      │
+   │      ├── Set 1
+   │      ├── Set 2
+   │      ├── Set 3
+   │      └── Set 4
+   │
+   ▼
+ COMPLETED SESSION
+   │
+   ▼
+ PROGRESS ANALYTICS
+
+
+ PROGRESS ANALYTICS & PERSONAL RECORDS::::::::::::::::::::::::::::::::::::
+ We will calculate actual fitness metrics from the data we have just created:
+
+ Total workouts
+ Workout completion rate
+ Training volume
+ Total reps
+ Total weight lifted
+ Best weight
+ Best reps
+ Estimated 1RM
+ Personal records (PR)
+ Exercise progression
+ Weekly/monthly progress
+ Member fitness dashboard statistics
+
+ For example:
+
+ BENCH PRESS PROGRESS
+
+ Week 1
+ 60kg × 8
+
+ Week 2
+ 60kg × 10
+
+ Week 3
+ 65kg × 8
+
+ Week 4
+ 67.5kg × 8
+
+ The backend will be able to determine:
+
+ Personal Best Weight = 67.5 kg
+ Best Repetitions    = 10
+ Estimated 1RM       = ...
+ Total Volume        = ...
+ Progress            = ...
+
+ That will turn the workout module from simple CRUD into an actual fitness tracking and analytics system.
 
 
 
