@@ -756,6 +756,9 @@ V13__create_workout_execution_tables.sql
 
 
 
+##ATTENDANCE MANAGEMENT::::::::::::::::::::::::::::::::::::::::
+
+
 
 ##git commit for each feature
 from intellij view>tool window > terminal > select git bash and run : git init, git status, git add ., and git commit -m "chore: member-profile added to fitness management backend"

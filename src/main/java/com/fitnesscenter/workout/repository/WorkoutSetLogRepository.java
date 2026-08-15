@@ -17,4 +17,10 @@ public interface WorkoutSetLogRepository
             Long workoutExerciseLogId,
             Integer setNumber
     );
+
+    //for workout analytics
+    List<WorkoutSetLog>
+    findAllByWorkoutExerciseLogIdIn(
+            List<Long> exerciseLogIds
+    );
 }

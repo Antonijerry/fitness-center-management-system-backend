@@ -19,4 +19,10 @@ public interface WorkoutExerciseLogRepository
             Long workoutSessionId,
             Long exerciseId
     );
+
+    //added for workout analytics
+    List<WorkoutExerciseLog>
+    findAllByWorkoutSessionIdIn(
+            List<Long> sessionIds
+    );
 }

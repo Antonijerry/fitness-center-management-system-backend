@@ -135,7 +135,7 @@ public class WorkoutAnalyticsServiceImpl
                         : totalVolume.divide(
                         BigDecimal.valueOf(completedWorkouts),
                         2,
-                        RoundingMode.HALF_UP
+                        java.math.RoundingMode.HALF_UP
                 );
 
         BigDecimal averageWorkoutDuration =
