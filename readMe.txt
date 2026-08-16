@@ -757,6 +757,260 @@ V13__create_workout_execution_tables.sql
 
 
 ##ATTENDANCE MANAGEMENT::::::::::::::::::::::::::::::::::::::::
+the attendance will flow like this
+                 MEMBER
+                   │
+                   ▼
+             CHECK-IN REQUEST
+                   │
+                   ▼
+       ┌─────────────────────────┐
+       │ Validate member         │
+       │ Validate membership     │
+       │ Check duplicate visit   │
+       │ Create attendance       │
+       └────────────┬────────────┘
+                    │
+                    ▼
+              CHECKED_IN
+                    │
+                    │
+              member leaves
+                    │
+                    ▼
+             CHECK-OUT REQUEST
+                    │
+                    ▼
+       ┌─────────────────────────┐
+       │ Find active attendance │
+       │ Set checkout time       │
+       │ Calculate duration      │
+       └────────────┬────────────┘
+                    │
+                    ▼
+              CHECKED_OUT
+
+We will support these attendance methods:
+
+MANUAL
+QR_CODE
+RFID
+BIOMETRIC
+MOBILE_APP
+
+
+##MEMBERSHIP VALIDATION & ACCESS CONTROL::::::::::::::::::::::::::::::::
+fitness center should also determine:
+
+A member can enter when:
+
+Member exists
+        AND
+Member account is active
+        AND
+Valid membership exists
+        AND
+Membership is active
+        AND
+Membership has not expired
+        AND
+Membership is not suspended
+        AND
+Required payment condition is satisfied
+
+Otherwise: Access Denied
+We will then connect Membership → Payment → Attendance → Access Control, so the system can automatically prevent an expired or suspended member from entering the fitness center.
+MEMBER
+   │
+   ▼
+MEMBERSHIP
+   │
+   ├── ACTIVE?
+   ├── EXPIRED?
+   ├── SUSPENDED?
+   └── PAYMENT STATUS?
+          │
+          ▼
+    ACCESS DECISION
+          │
+    ┌─────┴─────┐
+    ▼           ▼
+  ALLOW        DENY
+    │
+    ▼
+CHECK-IN
+    │
+    ▼
+ATTENDANCE
+The goal is that attendance can no longer simply check whether a member exists. It must ask whether that member is actually entitled to access the gym
+
+
+
+##PAYMENT & MEMBERSHIP AUTOMATION::::::::::::::::::::::::::::::::::::::::::::::
+
+MEMBERSHIP PLAN
+      ↓
+MEMBERSHIP
+      ↓
+PAYMENT
+      ↓
+PAYMENT VERIFIED
+      ↓
+MEMBERSHIP ACTIVATED
+      ↓
+MEMBERSHIP VALID
+      ↓
+ACCESS ALLOWED
+      ↓
+ATTENDANCE
+                 ┌─────────────┐
+                 │   PENDING   │
+                 └──────┬──────┘
+                        │
+                 payment verified
+                        │
+                        ▼
+                 ┌─────────────┐
+                 │   ACTIVE    │
+                 └──────┬──────┘
+                        │
+                  end date reached
+                        │
+                        ▼
+                 ┌─────────────┐
+                 │   EXPIRED   │
+                 └─────────────┘
+
+ACTIVE ────────► SUSPENDED
+ACTIVE ────────► CANCELLED
+The important rule is:
+
+A successful payment should activate a pending membership only after the membership itself has been validated.
+NB: do not activate from the frontend:
+Frontend
+   ↓
+Payment
+   ↓
+Payment verification
+   ↓
+Backend
+   ↓
+Membership activation
+
+##COMPLETE PAYMENT INTEGRATION::::::::::::::::::::::::::::::::::::::::::::::
+Membership
+    ↓
+Payment initialization
+    ↓
+Paystack
+    ↓
+Payment reference
+    ↓
+Payment verification
+    ↓
+Successful payment
+    ↓
+Membership activation
+    ↓
+Access control
+    ↓
+Attendance
+Since your project previously included PAYMENT_SECRET_KEY and PAYMENT_PUBLIC_KEY, I'll build this phase around Paystack. Paystack's current documentation confirms that transaction initialization should happen on your server using the secret key, and the returned authorization URL/access code is then used by the frontend. Paystack also explicitly recommends verifying the transaction before delivering value such as activating a membership
+When we finish this phase, the backend will support:
+
+POST /api/v1/payments/initialize
+
+to create a Paystack transaction,
+
+GET /api/v1/payments/verify/{reference}
+
+to verify it,
+
+and:
+
+POST /api/v1/payments/webhook
+
+to receive Paystack webhook events.
+the complete business flow will be
+                    MEMBER
+                       │
+                       ▼
+                MEMBERSHIP
+                       │
+                       ▼
+              PAYMENT REQUEST
+                       │
+                       ▼
+              PAYMENT SERVICE
+                       │
+                       ▼
+                  PAYSTACK
+                       │
+              ┌────────┴────────┐
+              ▼                 ▼
+        Authorization       Reference
+             URL                │
+              │                 │
+              ▼                 ▼
+           FRONTEND        DATABASE
+              │
+              ▼
+         CUSTOMER PAYS
+              │
+              ▼
+       PAYSTACK SUCCESS
+              │
+        ┌─────┴──────┐
+        ▼            ▼
+    VERIFY API    WEBHOOK
+        │            │
+        └─────┬──────┘
+              ▼
+       PAYMENT SUCCESSFUL
+              │
+              ▼
+     MEMBERSHIP ACTIVATED
+              │
+              ▼
+       ACCESS ALLOWED
+
+src/main/java/com/fitnesscenter/payment/
+│
+├── controller/
+│   └── PaymentController.java
+│
+├── dto/
+│   ├── PaymentInitializeRequest.java
+│   ├── PaymentInitializeResponse.java
+│   └── PaymentVerificationResponse.java
+│
+├── entity/
+│   ├── Payment.java
+│   ├── PaymentMethod.java
+│   └── PaymentStatus.java
+│
+├── repository/
+│   └── PaymentRepository.java
+│
+├── service/
+│   ├── PaymentService.java
+│   └── PaymentServiceImpl.java
+│
+└── client/
+    ├── PaystackClient.java
+    ├── PaystackInitializeRequest.java
+    ├── PaystackInitializeResponse.java
+    └── PaystackVerifyResponse.java
+For webhook handling:
+
+payment/
+└── webhook/
+    ├── PaystackWebhookController.java
+    └── PaystackWebhookPayload.java
+
+
+
+
 
 
 

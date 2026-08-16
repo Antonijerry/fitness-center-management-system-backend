@@ -1,5 +1,7 @@
 package com.fitnesscenter.attendance.service;
 
+import com.fitnesscenter.access.dto.AccessValidationResponse;
+import com.fitnesscenter.access.service.AccessControlService;
 import com.fitnesscenter.attendance.dto.AttendanceResponse;
 import com.fitnesscenter.attendance.dto.CheckInRequest;
 import com.fitnesscenter.attendance.entity.Attendance;
@@ -7,6 +9,7 @@ import com.fitnesscenter.attendance.entity.AttendanceMethod;
 import com.fitnesscenter.attendance.entity.AttendanceStatus;
 import com.fitnesscenter.attendance.mapper.AttendanceMapper;
 import com.fitnesscenter.attendance.repository.AttendanceRepository;
+import com.fitnesscenter.common.exception.AccessDeniedException;
 import com.fitnesscenter.common.exception.ConflictException;
 import com.fitnesscenter.common.exception.ResourceNotFoundException;
 import com.fitnesscenter.member.entity.MemberProfile;
@@ -27,99 +30,131 @@ public class AttendanceServiceImpl
 
     private final AttendanceRepository attendanceRepository;
 
-    private final MemberProfileRepository memberRepository;
+    private final MemberProfileRepository memberProfileRepository;
 
     private final AttendanceMapper attendanceMapper;
 
+    private final AccessControlService accessControlService;
 
+
+    /**
+     * Check a member into the fitness center.
+     *
+     * Access validation is delegated to the Access Control module.
+     */
     @Override
     @Transactional
     public AttendanceResponse checkIn(
             CheckInRequest request
     ) {
 
-        MemberProfile member =
-                memberRepository.findById(
-                        request.memberId()
-                ).orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Member not found"
-                        )
-                );
-
+        Long memberId = request.memberId();
 
         /*
-         * Prevent multiple open attendance records.
+         * 1. Validate member access.
+         *
+         * AccessControlService is responsible for:
+         *
+         * - Member existence
+         * - Member active status
+         * - Membership existence
+         * - Membership status
+         * - Membership start date
+         * - Membership expiry
+         * - Current membership validity
          */
-        if (
-                attendanceRepository.existsByMemberIdAndStatus(
-                        member.getId(),
-                        AttendanceStatus.CHECKED_IN
-                )
-        ) {
+        AccessValidationResponse access =
+                accessControlService.validateAccess(
+                        memberId
+                );
 
-            throw new ConflictException(
-                    "Member is already checked in"
+        if (!access.isAllowed()) {
+
+            throw new AccessDeniedException(
+                    access.message()
             );
         }
 
 
         /*
-         * Membership validation will be connected
-         * to the existing membership module.
-         *
-         * Do not remove this business rule when
-         * connecting the repository.
+         * 2. Find the member profile.
          */
-        validateMembership(member);
+        MemberProfile member =
+                memberProfileRepository.findById(memberId)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Member not found with id: "
+                                                + memberId
+                                )
+                        );
 
 
+        /*
+         * 3. Prevent duplicate active check-ins.
+         */
+        boolean alreadyCheckedIn =
+                attendanceRepository
+                        .existsByMemberIdAndStatus(
+                                memberId,
+                                AttendanceStatus.CHECKED_IN
+                        );
+
+        if (alreadyCheckedIn) {
+
+            throw new ConflictException(
+                    "Member already has an active attendance"
+            );
+        }
+
+
+        /*
+         * 4. Create attendance record.
+         */
         Attendance attendance =
-                new Attendance();
-
-        attendance.setMember(member);
-
-        attendance.setAttendanceDate(
-                LocalDate.now()
-        );
-
-        attendance.setCheckInTime(
-                LocalDateTime.now()
-        );
-
-        attendance.setStatus(
-                AttendanceStatus.CHECKED_IN
-        );
-
-        attendance.setMethod(
-                request.method() != null
-                        ? request.method()
-                        : AttendanceMethod.MANUAL
-        );
-
-        attendance.setNotes(
-                request.notes()
-        );
+                Attendance.builder()
+                        .member(member)
+                        .attendanceDate(LocalDate.now())
+                        .checkInTime(LocalDateTime.now())
+                        .status(AttendanceStatus.CHECKED_IN)
+                        .method(
+                                request.method() != null
+                                        ? request.method()
+                                        : AttendanceMethod.MANUAL
+                        )
+                        .notes(request.notes())
+                        .build();
 
 
+        /*
+         * 5. Save attendance.
+         */
         Attendance saved =
                 attendanceRepository.save(
                         attendance
                 );
 
 
+        /*
+         * 6. Convert entity to response DTO.
+         */
         return attendanceMapper.toResponse(
                 saved
         );
     }
 
 
+    /**
+     * Check a member out of the fitness center.
+     */
     @Override
     @Transactional
     public AttendanceResponse checkOut(
             Long memberId
     ) {
 
+        /*
+         * Find the member's latest active attendance.
+         */
         Attendance attendance =
                 attendanceRepository
                         .findFirstByMemberIdAndStatusOrderByCheckInTimeDesc(
@@ -133,21 +168,43 @@ public class AttendanceServiceImpl
                         );
 
 
+        /*
+         * Set checkout time.
+         */
         attendance.setCheckOutTime(
                 LocalDateTime.now()
         );
 
+
+        /*
+         * Change attendance status.
+         */
         attendance.setStatus(
                 AttendanceStatus.CHECKED_OUT
         );
 
 
+        /*
+         * Because the entity is managed inside the
+         * transaction, an explicit save is not strictly
+         * required. Saving explicitly keeps the operation
+         * clear and consistent.
+         */
+        Attendance saved =
+                attendanceRepository.save(
+                        attendance
+                );
+
+
         return attendanceMapper.toResponse(
-                attendance
+                saved
         );
     }
 
 
+    /**
+     * Get an attendance record by ID.
+     */
     @Override
     public AttendanceResponse getById(
             Long id
@@ -159,6 +216,9 @@ public class AttendanceServiceImpl
     }
 
 
+    /**
+     * Get all attendance records for a member.
+     */
     @Override
     public List<AttendanceResponse> getByMember(
             Long memberId
@@ -174,6 +234,9 @@ public class AttendanceServiceImpl
     }
 
 
+    /**
+     * Get all attendance records for a specific date.
+     */
     @Override
     public List<AttendanceResponse> getByDate(
             LocalDate date
@@ -189,6 +252,9 @@ public class AttendanceServiceImpl
     }
 
 
+    /**
+     * Get today's attendance records.
+     */
     @Override
     public List<AttendanceResponse> getToday() {
 
@@ -198,6 +264,9 @@ public class AttendanceServiceImpl
     }
 
 
+    /**
+     * Get all members who are currently checked in.
+     */
     @Override
     public List<AttendanceResponse> getCurrentlyCheckedIn() {
 
@@ -211,6 +280,9 @@ public class AttendanceServiceImpl
     }
 
 
+    /**
+     * Get a member's attendance records for a specific date.
+     */
     @Override
     public List<AttendanceResponse>
     getMemberAttendanceByDate(
@@ -229,6 +301,9 @@ public class AttendanceServiceImpl
     }
 
 
+    /**
+     * Find an attendance entity by ID.
+     */
     private Attendance getAttendance(
             Long id
     ) {
@@ -237,25 +312,9 @@ public class AttendanceServiceImpl
                 .findById(id)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
-                                "Attendance record not found"
+                                "Attendance record not found with id: "
+                                        + id
                         )
                 );
-    }
-
-
-    private void validateMembership(
-            MemberProfile member
-    ) {
-
-        /*
-         * Connect this method to the existing
-         * MembershipService / MembershipRepository
-         * from the membership module.
-         *
-         * The required business rule is:
-         *
-         * member must have an active and currently
-         * valid membership.
-         */
     }
 }

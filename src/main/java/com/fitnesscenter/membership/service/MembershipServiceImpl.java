@@ -356,4 +356,53 @@ public class MembershipServiceImpl
                         )
                 );
     }
+
+    //payment ...
+    @Override
+    @Transactional
+    public void activateMembership(
+            Long membershipId
+    ) {
+
+        Membership membership =
+                membershipRepository.findById(membershipId)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Membership not found with id: "
+                                                + membershipId
+                                )
+                        );
+
+        if (membership.getStatus()
+                == MembershipStatus.CANCELLED) {
+
+            throw new IllegalStateException(
+                    "Cancelled membership cannot be activated"
+            );
+        }
+
+        if (membership.getStatus()
+                == MembershipStatus.SUSPENDED) {
+
+            throw new IllegalStateException(
+                    "Suspended membership cannot be activated"
+            );
+        }
+
+        if (membership.getStartDate() != null
+                && membership.getEndDate() != null
+                && membership.getEndDate()
+                .isBefore(
+                        membership.getStartDate()
+                )) {
+
+            throw new IllegalStateException(
+                    "Membership end date cannot be before start date"
+            );
+        }
+
+        membership.setStatus(
+                MembershipStatus.ACTIVE
+        );
+    }
 }

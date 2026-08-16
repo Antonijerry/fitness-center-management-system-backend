@@ -34,4 +34,7 @@ public interface MembershipService {
     );
 
     void expireMemberships();
+
+    //added during payment...
+    void activateMembership(Long membershipId);
 }

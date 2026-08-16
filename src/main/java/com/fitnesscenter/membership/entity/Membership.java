@@ -92,4 +92,15 @@ public class Membership extends BaseEntity {
             length = 500
     )
     private String notes;
+
+
+    //added during access control
+    public boolean isCurrentlyValid() {
+
+        LocalDate today = LocalDate.now();
+
+        return status == MembershipStatus.ACTIVE
+                && !today.isBefore(startDate)
+                && !today.isAfter(endDate);
+    }
 }

@@ -3,9 +3,7 @@ package com.fitnesscenter.attendance.entity;
 import com.fitnesscenter.common.entity.BaseEntity;
 import com.fitnesscenter.member.entity.MemberProfile;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -34,7 +32,9 @@ import java.time.LocalDateTime;
 )
 @Getter
 @Setter
+@Builder     //added during control access
 @NoArgsConstructor
+@AllArgsConstructor   //added during control access
 public class Attendance extends BaseEntity {
 
 //    @Id

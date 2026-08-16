@@ -266,4 +266,20 @@ public class GlobalExceptionHandler {
                         )
                 );
     }
+
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Void>>
+    handleAccessDenied(
+            AccessDeniedException exception
+    ) {
+
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(
+                        ApiResponse.error(
+                                exception.getMessage()
+                        )
+                );
+    }
 }
