@@ -43,3 +43,10 @@ app:
     secret: ${JWT_SECRET:3BGLMUCggki1Q4aLMbMclUpa95BY7dU0Mxhl8pOgYKKGmacVRFAhex1yyr4xyCYNiaT6UXdWQkkTqK0rGePhNy}
     access-token-expiration: 900000
     refresh-token-expiration: 604800000
+
+#for payment configuration  //make sure to add the values of secret and public keys etc to the environment variables
+paystack:
+  base-url: https://api.paystack.co
+  secret-key: ${PAYMENT_SECRET_KEY}
+  public-key: ${PAYMENT_PUBLIC_KEY}
+  callback-url: ${PAYMENT_CALLBACK_URL:http://localhost:5173/payment/callback}

@@ -1007,12 +1007,38 @@ payment/
 └── webhook/
     ├── PaystackWebhookController.java
     └── PaystackWebhookPayload.java
+V14__create_payments_table.sql
+
+Idempotency : Payment processing must be idempotent.
 
 
+test:: Yes. Since your backend is now running successfully, the next step is to configure Paystack Test Mode and test your complete payment flow with Postman.
 
+       Do not use live keys yet. Paystack provides separate test and live credentials; test keys begin with pk_test_ and sk_test_, while live keys begin with pk_live_ and sk_live_.
+       1. Generate your Paystack test keys
 
+       Go to the Paystack Dashboard.
 
+       Then:
 
+       Settings → API Keys & Webhooks
+
+       Under API Configuration – Test Mode, you should find:
+
+       Test Public Key
+       pk_test_...
+
+       Test Secret Key
+       sk_test_...
+       Your backend uses:
+
+       PAYMENT_SECRET_KEY=sk_test_...
+
+       Your frontend will eventually use:
+
+       PAYMENT_PUBLIC_KEY=pk_test_...
+
+       Never put sk_test_... in React or any frontend code. Paystack specifically requires the secret key to remain on your server
 
 ##git commit for each feature
 from intellij view>tool window > terminal > select git bash and run : git init, git status, git add ., and git commit -m "chore: member-profile added to fitness management backend"
