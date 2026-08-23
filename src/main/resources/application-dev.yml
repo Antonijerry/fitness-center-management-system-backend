@@ -30,12 +30,36 @@ spring:
     init:
       mode: never
 
+
+
+  #for email notification
+
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+
+
 logging:
   level:
     root: INFO
     com.fitnesscenter: DEBUG
     org.springframework.web: INFO
     org.hibernate.SQL: DEBUG
+
+
+
 
 #JWT config
 app:
@@ -50,3 +74,5 @@ paystack:
   secret-key: ${PAYMENT_SECRET_KEY}
   public-key: ${PAYMENT_PUBLIC_KEY}
   callback-url: ${PAYMENT_CALLBACK_URL:http://localhost:5173/payment/callback}
+
+

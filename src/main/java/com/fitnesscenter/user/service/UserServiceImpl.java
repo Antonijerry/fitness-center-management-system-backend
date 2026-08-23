@@ -1,5 +1,6 @@
 package com.fitnesscenter.user.service;
 
+import com.fitnesscenter.common.exception.AccessDeniedException;
 import com.fitnesscenter.common.exception.ConflictException;
 import com.fitnesscenter.common.exception.ResourceNotFoundException;
 import com.fitnesscenter.user.dto.AssignRoleRequest;
@@ -15,9 +16,13 @@ import com.fitnesscenter.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -33,15 +38,39 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
 
 
+    /*
+     * ============================================================
+     * ROLE HIERARCHY
+     * ============================================================
+     *
+     * MEMBER       = 1
+     * RECEPTIONIST = 2
+     * TRAINER      = 3
+     * MANAGER      = 4
+     * ADMIN        = 5
+     *
+     * A higher-level user can manage lower-level users.
+     */
+    private static final int MEMBER_LEVEL = 1;
+    private static final int RECEPTIONIST_LEVEL = 2;
+    private static final int TRAINER_LEVEL = 3;
+    private static final int MANAGER_LEVEL = 4;
+    private static final int ADMIN_LEVEL = 5;
+
+
     @Override
     @Transactional
     public UserResponse createUser(
             CreateUserRequest request
     ) {
 
-        String email = normalizeEmail(request.email());
+        requireUserManagementPermission();
+
+        String email =
+                normalizeEmail(request.email());
 
         if (userRepository.existsByEmailIgnoreCase(email)) {
+
             throw new ConflictException(
                     "A user with this email already exists"
             );
@@ -49,9 +78,13 @@ public class UserServiceImpl implements UserService {
 
         User user = new User();
 
-        user.setFirstName(request.firstName().trim());
+        user.setFirstName(
+                request.firstName().trim()
+        );
 
-        user.setLastName(request.lastName().trim());
+        user.setLastName(
+                request.lastName().trim()
+        );
 
         user.setEmail(email);
 
@@ -61,15 +94,6 @@ public class UserServiceImpl implements UserService {
                         : request.phone().trim()
         );
 
-        /*
-         * IMPORTANT:
-         * Password hashing will be moved to the authentication
-         * security implementation in the next phase.
-         *
-         * For the moment we store the supplied value so the
-         * user module can be tested. Do NOT expose it through
-         * UserResponse.
-         */
         user.setPassword(
                 passwordEncoder.encode(
                         request.password()
@@ -80,17 +104,23 @@ public class UserServiceImpl implements UserService {
 
         user.setAccountNonLocked(true);
 
-        Role memberRole = roleRepository
-                .findByNameIgnoreCase("MEMBER")
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Default MEMBER role was not found"
-                        )
-                );
+        /*
+         * Every newly created user receives MEMBER
+         * as the default role.
+         */
+        Role memberRole =
+                roleRepository
+                        .findByNameIgnoreCase("MEMBER")
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Default MEMBER role was not found"
+                                )
+                        );
 
         user.getRoles().add(memberRole);
 
-        User savedUser = userRepository.save(user);
+        User savedUser =
+                userRepository.save(user);
 
         return userMapper.toResponse(savedUser);
     }
@@ -102,15 +132,24 @@ public class UserServiceImpl implements UserService {
             Pageable pageable
     ) {
 
+        requireUserManagementPermission();
+
         Page<User> users;
 
-        if (search == null || search.isBlank()) {
+        if (
+                search == null ||
+                        search.isBlank()
+        ) {
 
-            users = userRepository.findAll(pageable);
+            users =
+                    userRepository.findAll(
+                            pageable
+                    );
 
         } else {
 
-            String normalizedSearch = search.trim();
+            String normalizedSearch =
+                    search.trim();
 
             users =
                     userRepository
@@ -121,14 +160,21 @@ public class UserServiceImpl implements UserService {
                             );
         }
 
-        return users.map(userMapper::toResponse);
+        return users.map(
+                userMapper::toResponse
+        );
     }
 
 
     @Override
-    public UserResponse getUserById(Long id) {
+    public UserResponse getUserById(
+            Long id
+    ) {
 
-        User user = findUser(id);
+        requireUserManagementPermission();
+
+        User user =
+                findUser(id);
 
         return userMapper.toResponse(user);
     }
@@ -141,7 +187,16 @@ public class UserServiceImpl implements UserService {
             UpdateUserRequest request
     ) {
 
-        User user = findUser(id);
+        User currentUser =
+                getCurrentUser();
+
+        User user =
+                findUser(id);
+
+        requireCanManageTarget(
+                currentUser,
+                user
+        );
 
         if (request.firstName() != null) {
 
@@ -160,10 +215,20 @@ public class UserServiceImpl implements UserService {
         if (request.email() != null) {
 
             String newEmail =
-                    normalizeEmail(request.email());
+                    normalizeEmail(
+                            request.email()
+                    );
 
-            if (!newEmail.equalsIgnoreCase(user.getEmail())
-                    && userRepository.existsByEmailIgnoreCase(newEmail)) {
+            if (
+                    !newEmail.equalsIgnoreCase(
+                            user.getEmail()
+                    )
+                            &&
+                            userRepository
+                                    .existsByEmailIgnoreCase(
+                                            newEmail
+                                    )
+            ) {
 
                 throw new ConflictException(
                         "A user with this email already exists"
@@ -191,7 +256,31 @@ public class UserServiceImpl implements UserService {
             UpdateUserStatusRequest request
     ) {
 
-        User user = findUser(id);
+        User currentUser =
+                getCurrentUser();
+
+        User user =
+                findUser(id);
+
+        requireCanManageTarget(
+                currentUser,
+                user
+        );
+
+        /*
+         * Prevent an administrator or manager from
+         * accidentally disabling their own account.
+         */
+        if (
+                currentUser.getId().equals(
+                        user.getId()
+                )
+        ) {
+
+            throw new AccessDeniedException(
+                    "You cannot change your own account status"
+            );
+        }
 
         user.setEnabled(
                 request.enabled()
@@ -208,13 +297,81 @@ public class UserServiceImpl implements UserService {
             AssignRoleRequest request
     ) {
 
-        User user = findUser(id);
+        User currentUser =
+                getCurrentUser();
 
-        Role role = findRole(request.roleName());
+        User targetUser =
+                findUser(id);
 
-        user.getRoles().add(role);
+        Role role =
+                findRole(
+                        request.roleName()
+                );
 
-        return userMapper.toResponse(user);
+        /*
+         * Verify that the current user can manage
+         * the target user.
+         */
+        requireCanManageTarget(
+                currentUser,
+                targetUser
+        );
+
+        /*
+         * Verify that the current user can assign
+         * the requested role.
+         */
+        requireCanAssignRole(
+                currentUser,
+                role
+        );
+
+        /*
+         * Prevent duplicate assignments.
+         */
+        boolean alreadyHasRole =
+                targetUser.getRoles()
+                        .stream()
+                        .anyMatch(
+                                existingRole ->
+                                        existingRole
+                                                .getName()
+                                                .equalsIgnoreCase(
+                                                        role.getName()
+                                                )
+                        );
+
+        if (alreadyHasRole) {
+
+            throw new ConflictException(
+                    "User already has the "
+                            + role.getName()
+                            + " role"
+            );
+        }
+
+        /*
+         * Prevent a user from changing their own
+         * privilege level.
+         */
+        if (
+                currentUser.getId().equals(
+                        targetUser.getId()
+                )
+        ) {
+
+            throw new AccessDeniedException(
+                    "You cannot assign roles to your own account"
+            );
+        }
+
+        targetUser
+                .getRoles()
+                .add(role);
+
+        return userMapper.toResponse(
+                targetUser
+        );
     }
 
 
@@ -225,46 +382,408 @@ public class UserServiceImpl implements UserService {
             AssignRoleRequest request
     ) {
 
-        User user = findUser(id);
+        User currentUser =
+                getCurrentUser();
 
-        Role role = findRole(request.roleName());
+        User targetUser =
+                findUser(id);
 
-        if (user.getRoles().size() <= 1) {
+        Role role =
+                findRole(
+                        request.roleName()
+                );
+
+        /*
+         * Verify target-user hierarchy.
+         */
+        requireCanManageTarget(
+                currentUser,
+                targetUser
+        );
+
+        /*
+         * Verify that the current user can manage
+         * the requested role.
+         */
+        requireCanAssignRole(
+                currentUser,
+                role
+        );
+
+        /*
+         * Prevent self role modification.
+         */
+        if (
+                currentUser.getId().equals(
+                        targetUser.getId()
+                )
+        ) {
+
+            throw new AccessDeniedException(
+                    "You cannot remove roles from your own account"
+            );
+        }
+
+        /*
+         * Verify that the target actually has
+         * this role.
+         */
+        boolean hasRole =
+                targetUser.getRoles()
+                        .stream()
+                        .anyMatch(
+                                existingRole ->
+                                        existingRole
+                                                .getName()
+                                                .equalsIgnoreCase(
+                                                        role.getName()
+                                                )
+                        );
+
+        if (!hasRole) {
+
+            throw new ConflictException(
+                    "User does not have the "
+                            + role.getName()
+                            + " role"
+            );
+        }
+
+        /*
+         * Every user must retain at least one role.
+         */
+        if (
+                targetUser.getRoles().size() <= 1
+        ) {
 
             throw new ConflictException(
                     "A user must have at least one role"
             );
         }
 
-        user.getRoles().remove(role);
+        targetUser
+                .getRoles()
+                .removeIf(
+                        existingRole ->
+                                existingRole
+                                        .getName()
+                                        .equalsIgnoreCase(
+                                                role.getName()
+                                        )
+                );
 
-        return userMapper.toResponse(user);
+        return userMapper.toResponse(
+                targetUser
+        );
     }
 
 
     @Override
     @Transactional
-    public void deleteUser(Long id) {
+    public void deleteUser(
+            Long id
+    ) {
 
-        User user = findUser(id);
+        User currentUser =
+                getCurrentUser();
 
-        userRepository.delete(user);
+        User targetUser =
+                findUser(id);
+
+        requireCanManageTarget(
+                currentUser,
+                targetUser
+        );
+
+        /*
+         * Never allow an administrator/manager to
+         * delete their own account from the user
+         * management endpoint.
+         */
+        if (
+                currentUser.getId().equals(
+                        targetUser.getId()
+                )
+        ) {
+
+            throw new AccessDeniedException(
+                    "You cannot delete your own account"
+            );
+        }
+
+        userRepository.delete(
+                targetUser
+        );
     }
 
 
-    private User findUser(Long id) {
+    /*
+     * ============================================================
+     * AUTHENTICATION
+     * ============================================================
+     */
+
+    private User getCurrentUser() {
+
+        Authentication authentication =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
+
+        if (
+                authentication == null ||
+                        !authentication.isAuthenticated()
+        ) {
+
+            throw new AccessDeniedException(
+                    "Authentication is required"
+            );
+        }
+
+        String email =
+                authentication.getName();
 
         return userRepository
-                .findById(id)
+                .findByEmailIgnoreCase(email)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
-                                "User not found with id: " + id
+                                "Authenticated user was not found"
                         )
                 );
     }
 
 
-    private Role findRole(String roleName) {
+    /*
+     * ============================================================
+     * GENERAL USER MANAGEMENT PERMISSION
+     * ============================================================
+     */
+
+    private void requireUserManagementPermission() {
+
+        User currentUser =
+                getCurrentUser();
+
+        if (
+                hasRole(
+                        currentUser,
+                        "ADMIN"
+                )
+                        ||
+                        hasRole(
+                                currentUser,
+                                "MANAGER"
+                        )
+        ) {
+
+            return;
+        }
+
+        throw new AccessDeniedException(
+                "You do not have permission to manage users"
+        );
+    }
+
+
+    /*
+     * ============================================================
+     * TARGET USER PERMISSION
+     * ============================================================
+     */
+
+    private void requireCanManageTarget(
+            User currentUser,
+            User targetUser
+    ) {
+
+        if (
+                hasRole(
+                        currentUser,
+                        "ADMIN"
+                )
+        ) {
+
+            return;
+        }
+
+        if (
+                hasRole(
+                        currentUser,
+                        "MANAGER"
+                )
+        ) {
+
+            /*
+             * Manager cannot manage themselves.
+             */
+            if (
+                    currentUser.getId().equals(
+                            targetUser.getId()
+                    )
+            ) {
+
+                throw new AccessDeniedException(
+                        "You cannot manage your own account"
+                );
+            }
+
+            /*
+             * Manager may only manage users whose
+             * highest role is below MANAGER.
+             */
+            boolean targetIsBelowManager =
+                    targetUser.getRoles()
+                            .stream()
+                            .allMatch(
+                                    role ->
+                                            getRoleLevel(
+                                                    role.getName()
+                                            ) < MANAGER_LEVEL
+                            );
+
+            if (targetIsBelowManager) {
+                return;
+            }
+        }
+
+        throw new AccessDeniedException(
+                "You do not have permission to manage this user"
+        );
+    }
+
+
+    /*
+     * ============================================================
+     * ROLE ASSIGNMENT PERMISSION
+     * ============================================================
+     */
+
+    private void requireCanAssignRole(
+            User currentUser,
+            Role role
+    ) {
+
+        String roleName =
+                normalizeRoleName(
+                        role.getName()
+                );
+
+        /*
+         * ADMIN can assign any role.
+         */
+        if (
+                hasRole(
+                        currentUser,
+                        "ADMIN"
+                )
+        ) {
+
+            return;
+        }
+
+        /*
+         * MANAGER can only assign:
+         *
+         * TRAINER
+         * RECEPTIONIST
+         * MEMBER
+         */
+        if (
+                hasRole(
+                        currentUser,
+                        "MANAGER"
+                )
+        ) {
+
+            if (
+                    roleName.equals("TRAINER")
+                            ||
+                            roleName.equals("RECEPTIONIST")
+                            ||
+                            roleName.equals("MEMBER")
+            ) {
+
+                return;
+            }
+        }
+
+        throw new AccessDeniedException(
+                "You do not have permission to assign the "
+                        + roleName
+                        + " role"
+        );
+    }
+
+
+    /*
+     * ============================================================
+     * ROLE HELPERS
+     * ============================================================
+     */
+
+    private boolean hasRole(
+            User user,
+            String roleName
+    ) {
+
+        return user.getRoles()
+                .stream()
+                .anyMatch(
+                        role ->
+                                normalizeRoleName(
+                                        role.getName()
+                                )
+                                        .equals(
+                                                normalizeRoleName(
+                                                        roleName
+                                                )
+                                        )
+                );
+    }
+
+
+    private int getRoleLevel(
+            String roleName
+    ) {
+
+        return switch (
+                normalizeRoleName(roleName)
+                ) {
+
+            case "MEMBER" ->
+                    MEMBER_LEVEL;
+
+            case "RECEPTIONIST" ->
+                    RECEPTIONIST_LEVEL;
+
+            case "TRAINER" ->
+                    TRAINER_LEVEL;
+
+            case "MANAGER" ->
+                    MANAGER_LEVEL;
+
+            case "ADMIN" ->
+                    ADMIN_LEVEL;
+
+            default ->
+                    0;
+        };
+    }
+
+
+    private Role findRole(
+            String roleName
+    ) {
+
+        if (
+                roleName == null ||
+                        roleName.isBlank()
+        ) {
+
+            throw new ResourceNotFoundException(
+                    "Role name is required"
+            );
+        }
 
         return roleRepository
                 .findByNameIgnoreCase(
@@ -272,16 +791,44 @@ public class UserServiceImpl implements UserService {
                 )
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
-                                "Role not found: " + roleName
+                                "Role not found: "
+                                        + roleName
                         )
                 );
     }
 
 
-    private String normalizeEmail(String email) {
+    private User findUser(
+            Long id
+    ) {
+
+        return userRepository
+                .findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "User not found with id: "
+                                        + id
+                        )
+                );
+    }
+
+
+    private String normalizeRoleName(
+            String roleName
+    ) {
+
+        return roleName
+                .trim()
+                .toUpperCase(Locale.ROOT);
+    }
+
+
+    private String normalizeEmail(
+            String email
+    ) {
 
         return email
                 .trim()
-                .toLowerCase();
+                .toLowerCase(Locale.ROOT);
     }
 }

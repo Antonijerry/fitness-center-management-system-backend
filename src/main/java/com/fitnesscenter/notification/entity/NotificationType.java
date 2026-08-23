@@ -1,0 +1,24 @@
+package com.fitnesscenter.notification.entity;
+
+public enum NotificationType {
+
+    PAYMENT_SUCCESSFUL,
+
+    PAYMENT_FAILED,
+
+    MEMBERSHIP_ACTIVATED,
+
+    MEMBERSHIP_EXPIRING,
+
+    MEMBERSHIP_EXPIRED,
+
+    CLASS_BOOKED,
+
+    CLASS_CANCELLED,
+
+    WORKOUT_ASSIGNED,
+
+    ATTENDANCE_RECORDED,
+
+    SYSTEM_ANNOUNCEMENT
+}

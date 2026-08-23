@@ -37,4 +37,12 @@ public interface MemberProfileRepository
     List<MemberProfile> findByPhoneContaining(
             String phone
     );
+
+    //added for dashboard package
+    long countByStatus(MemberStatus status);
+
+    //
+    List<MemberProfile> findByUserFirstNameContainingIgnoreCaseOrUserLastNameContainingIgnoreCaseOrUserEmailContainingIgnoreCase(
+            String firstName, String lastName, String email
+    );
 }

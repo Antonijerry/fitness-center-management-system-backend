@@ -26,7 +26,13 @@ public class UserController {
     private final UserService userService;
 
 
+    /**
+     * Create a new user.
+     *
+     * ADMIN and MANAGER can create users.
+     */
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<UserResponse>> createUser(
             @Valid @RequestBody CreateUserRequest request
     ) {
@@ -45,7 +51,13 @@ public class UserController {
     }
 
 
+    /**
+     * Get users.
+     *
+     * ADMIN and MANAGER can access the user management page.
+     */
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<Page<UserResponse>>> getUsers(
 
             @RequestParam(required = false)
@@ -91,7 +103,11 @@ public class UserController {
     }
 
 
+    /**
+     * Get a single user.
+     */
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<UserResponse>> getUser(
             @PathVariable Long id
     ) {
@@ -108,7 +124,16 @@ public class UserController {
     }
 
 
+    /**
+     * Update user information.
+     *
+     * ADMIN and MANAGER may reach this endpoint.
+     *
+     * UserServiceImpl performs the additional
+     * target-user permission check.
+     */
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<UserResponse>> updateUser(
             @PathVariable Long id,
 
@@ -132,7 +157,16 @@ public class UserController {
     }
 
 
+    /**
+     * Enable or disable a user account.
+     *
+     * ADMIN and MANAGER may reach this endpoint.
+     *
+     * UserServiceImpl performs the granular
+     * target-user permission check.
+     */
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<UserResponse>> updateStatus(
             @PathVariable Long id,
 
@@ -156,7 +190,16 @@ public class UserController {
     }
 
 
+    /**
+     * Assign a role to a user.
+     *
+     * ADMIN and MANAGER may reach this endpoint.
+     *
+     * UserServiceImpl determines whether the
+     * current user may assign the requested role.
+     */
     @PostMapping("/{id}/roles")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<UserResponse>> assignRole(
             @PathVariable Long id,
 
@@ -180,7 +223,16 @@ public class UserController {
     }
 
 
+    /**
+     * Remove a role from a user.
+     *
+     * ADMIN and MANAGER may reach this endpoint.
+     *
+     * UserServiceImpl enforces the role hierarchy
+     * and prevents removing the user's final role.
+     */
     @DeleteMapping("/{id}/roles")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<UserResponse>> removeRole(
             @PathVariable Long id,
 
@@ -204,7 +256,16 @@ public class UserController {
     }
 
 
+    /**
+     * Delete a user.
+     *
+     * ADMIN and MANAGER may reach this endpoint.
+     *
+     * UserServiceImpl determines whether the
+     * target user can actually be deleted.
+     */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<Void>> deleteUser(
             @PathVariable Long id
     ) {

@@ -47,4 +47,11 @@ public interface AttendanceRepository
             LocalDate startDate,
             LocalDate endDate
     );
+
+    /*
+     * Count today's attendance records.
+     */
+    long countByAttendanceDate(
+            LocalDate date
+    );
 }

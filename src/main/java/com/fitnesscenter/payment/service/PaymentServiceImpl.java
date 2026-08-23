@@ -1,9 +1,12 @@
-package com.fitnesscenter.payment.service;
+
+        package com.fitnesscenter.payment.service;
 
 import com.fitnesscenter.common.exception.ResourceNotFoundException;
 import com.fitnesscenter.membership.entity.Membership;
 import com.fitnesscenter.membership.entity.MembershipStatus;
 import com.fitnesscenter.membership.repository.MembershipRepository;
+import com.fitnesscenter.notification.entity.NotificationType;
+import com.fitnesscenter.notification.service.NotificationService;
 import com.fitnesscenter.payment.client.PaystackClient;
 import com.fitnesscenter.payment.client.PaystackInitializeRequest;
 import com.fitnesscenter.payment.client.PaystackInitializeResponse;
@@ -33,6 +36,12 @@ public class PaymentServiceImpl implements PaymentService {
 
     private final PaystackClient paystackClient;
 
+    private final NotificationService notificationService;
+
+
+    // =========================================================
+    // INITIALIZE PAYMENT
+    // =========================================================
 
     @Override
     @Transactional
@@ -42,38 +51,24 @@ public class PaymentServiceImpl implements PaymentService {
 
         Membership membership =
                 membershipRepository.findById(
-                                request.membershipId()
+                        request.membershipId()
+                ).orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Membership not found with id: "
+                                        + request.membershipId()
                         )
-                        .orElseThrow(() ->
-                                new ResourceNotFoundException(
-                                        "Membership not found with id: "
-                                                + request.membershipId()
-                                )
-                        );
-
-
-        validateMembershipForPayment(
-                membership
-        );
-
-
-        /*
-         * Your Membership entity contains:
-         *
-         * private BigDecimal price;
-         *
-         * Therefore we use getPrice(), NOT getAmount().
-         */
-        BigDecimal amount =
-                getMembershipAmount(
-                        membership
                 );
+
+
+        validateMembershipForPayment(membership);
+
+
+        BigDecimal amount =
+                getMembershipAmount(membership);
 
 
         String currency =
-                getMembershipCurrency(
-                        membership
-                );
+                getMembershipCurrency(membership);
 
 
         String reference =
@@ -82,7 +77,7 @@ public class PaymentServiceImpl implements PaymentService {
 
         /*
          * Create our internal payment record
-         * before calling Paystack.
+         * before contacting Paystack.
          */
         Payment payment =
                 Payment.builder()
@@ -96,42 +91,23 @@ public class PaymentServiceImpl implements PaymentService {
 
 
         Payment savedPayment =
-                paymentRepository.save(
-                        payment
-                );
+                paymentRepository.save(payment);
 
 
-        /*
-         * Membership -> User -> email
-         *
-         * Your Membership entity has:
-         *
-         * private User user;
-         *
-         * It does NOT have getMember().
-         */
         String email =
-                getMemberEmail(
-                        membership
-                );
+                getMemberEmail(membership);
 
 
         /*
-         * Paystack expects amount in the
-         * smallest currency denomination.
-         *
-         * Example:
+         * Paystack requires the amount in the
+         * smallest currency unit.
          *
          * NGN 50,000.00
-         *
-         * becomes:
-         *
+         * becomes
          * 5,000,000 kobo
          */
         long gatewayAmount =
-                toMinorUnit(
-                        amount
-                );
+                toMinorUnit(amount);
 
 
         PaystackInitializeRequest paystackRequest =
@@ -167,9 +143,7 @@ public class PaymentServiceImpl implements PaymentService {
                             : "Empty Paystack response"
             );
 
-            paymentRepository.save(
-                    savedPayment
-            );
+            paymentRepository.save(savedPayment);
 
             throw new IllegalStateException(
                     "Unable to initialize Paystack payment"
@@ -178,7 +152,7 @@ public class PaymentServiceImpl implements PaymentService {
 
 
         /*
-         * Save Paystack's reference.
+         * Save Paystack transaction reference.
          */
         savedPayment.setGatewayReference(
                 paystackResponse.data().reference()
@@ -190,34 +164,26 @@ public class PaymentServiceImpl implements PaymentService {
         );
 
 
-        paymentRepository.save(
-                savedPayment
-        );
+        paymentRepository.save(savedPayment);
 
 
         /*
-         * Return the information required by
-         * the frontend.
-         *
-         * authorizationUrl:
-         * Where the customer can be redirected.
-         *
-         * accessCode:
-         * Can also be used by Paystack frontend
-         * integrations.
+         * Return payment information to frontend.
          */
         return new PaymentInitializeResponse(
                 savedPayment.getId(),
                 savedPayment.getReference(),
-                paystackResponse.data()
-                        .authorizationUrl(),
-                paystackResponse.data()
-                        .accessCode(),
+                paystackResponse.data().authorizationUrl(),
+                paystackResponse.data().accessCode(),
                 gatewayAmount,
                 currency
         );
     }
 
+
+    // =========================================================
+    // VERIFY PAYMENT
+    // =========================================================
 
     @Override
     @Transactional
@@ -226,10 +192,7 @@ public class PaymentServiceImpl implements PaymentService {
     ) {
 
         /*
-         * FIRST find the payment.
-         *
-         * This must happen before using
-         * payment.getStatus().
+         * First find our internal payment.
          */
         Payment payment =
                 paymentRepository
@@ -243,11 +206,10 @@ public class PaymentServiceImpl implements PaymentService {
 
 
         /*
-         * Idempotency:
+         * Idempotency.
          *
-         * If this payment has already been
-         * successfully processed, don't call
-         * Paystack again unnecessarily.
+         * If this payment has already been successfully
+         * processed, do not process it again.
          */
         if (payment.getStatus()
                 == PaymentStatus.SUCCESSFUL) {
@@ -275,6 +237,9 @@ public class PaymentServiceImpl implements PaymentService {
                 );
 
 
+        /*
+         * Paystack verification failed.
+         */
         if (response == null
                 || !response.status()
                 || response.data() == null) {
@@ -289,9 +254,7 @@ public class PaymentServiceImpl implements PaymentService {
                             : "Empty Paystack verification response"
             );
 
-            paymentRepository.save(
-                    payment
-            );
+            paymentRepository.save(payment);
 
             throw new IllegalStateException(
                     "Unable to verify Paystack payment"
@@ -304,13 +267,12 @@ public class PaymentServiceImpl implements PaymentService {
 
 
         /*
-         * NEVER trust the status alone.
+         * Never trust the Paystack status alone.
          *
-         * Verify:
-         *
-         * reference
-         * amount
-         * currency
+         * Validate:
+         * 1. Reference
+         * 2. Amount
+         * 3. Currency
          */
         validateGatewayPayment(
                 payment,
@@ -318,21 +280,24 @@ public class PaymentServiceImpl implements PaymentService {
         );
 
 
+        /*
+         * Convert Paystack status to our
+         * internal PaymentStatus.
+         */
         PaymentStatus status =
                 mapPaystackStatus(
                         data.status()
                 );
 
 
-        payment.setStatus(
-                status
-        );
-
+        /*
+         * Save gateway information.
+         */
+        payment.setStatus(status);
 
         payment.setGatewayReference(
                 data.reference()
         );
-
 
         payment.setGatewayResponse(
                 response.message()
@@ -340,10 +305,13 @@ public class PaymentServiceImpl implements PaymentService {
 
 
         /*
-         * Payment successfully completed.
+         * IMPORTANT:
+         *
+         * Only activate the membership and send
+         * notification when Paystack confirms
+         * successful payment.
          */
-        if (status
-                == PaymentStatus.SUCCESSFUL) {
+        if (status == PaymentStatus.SUCCESSFUL) {
 
             payment.setPaidAt(
                     LocalDateTime.now()
@@ -351,20 +319,41 @@ public class PaymentServiceImpl implements PaymentService {
 
 
             /*
-             * Activate membership after
-             * successful payment.
+             * Activate membership.
              */
             activateMembership(
                     payment.getMembership()
             );
+
+
+            /*
+             * Save payment before notification.
+             */
+            paymentRepository.save(payment);
+
+
+            /*
+             * Create payment-success notification.
+             *
+             * Membership -> User -> ID
+             */
+            createPaymentSuccessfulNotification(
+                    payment
+            );
+
+        } else {
+
+            /*
+             * Save PENDING / FAILED / ABANDONED
+             * payment statuses.
+             */
+            paymentRepository.save(payment);
         }
 
 
-        paymentRepository.save(
-                payment
-        );
-
-
+        /*
+         * Return verification response.
+         */
         return new PaymentVerificationResponse(
                 payment.getId(),
                 payment.getReference(),
@@ -376,6 +365,10 @@ public class PaymentServiceImpl implements PaymentService {
         );
     }
 
+
+    // =========================================================
+    // CHECK SUCCESSFUL PAYMENT
+    // =========================================================
 
     @Override
     @Transactional(readOnly = true)
@@ -391,11 +384,10 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
 
-    /*
-     * ---------------------------------------------------------
-     * MEMBERSHIP VALIDATION
-     * ---------------------------------------------------------
-     */
+    // =========================================================
+    // MEMBERSHIP VALIDATION
+    // =========================================================
+
     private void validateMembershipForPayment(
             Membership membership
     ) {
@@ -419,19 +411,10 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
 
-    /*
-     * ---------------------------------------------------------
-     * MEMBERSHIP PRICE
-     * ---------------------------------------------------------
-     *
-     * Your Membership entity has:
-     *
-     * private BigDecimal price;
-     *
-     * Therefore:
-     *
-     * membership.getPrice()
-     */
+    // =========================================================
+    // GET MEMBERSHIP AMOUNT
+    // =========================================================
+
     private BigDecimal getMembershipAmount(
             Membership membership
     ) {
@@ -460,37 +443,25 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
 
-    /*
-     * ---------------------------------------------------------
-     * CURRENCY
-     * ---------------------------------------------------------
-     *
-     * Your Membership entity currently doesn't
-     * contain a currency field.
-     *
-     * Therefore we use NGN for this system.
-     */
+    // =========================================================
+    // GET CURRENCY
+    // =========================================================
+
     private String getMembershipCurrency(
             Membership membership
     ) {
 
+        /*
+         * This system currently uses Nigerian Naira.
+         */
         return "NGN";
     }
 
 
-    /*
-     * ---------------------------------------------------------
-     * MEMBER EMAIL
-     * ---------------------------------------------------------
-     *
-     * Membership:
-     *
-     *     membership.getUser()
-     *
-     * User:
-     *
-     *     user.getEmail()
-     */
+    // =========================================================
+    // GET MEMBER EMAIL
+    // =========================================================
+
     private String getMemberEmail(
             Membership membership
     ) {
@@ -518,11 +489,10 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
 
-    /*
-     * ---------------------------------------------------------
-     * ACTIVATE MEMBERSHIP
-     * ---------------------------------------------------------
-     */
+    // =========================================================
+    // ACTIVATE MEMBERSHIP
+    // =========================================================
+
     private void activateMembership(
             Membership membership
     ) {
@@ -535,15 +505,23 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
 
-        /*
-         * Do not reactivate cancelled memberships.
-         */
         if (membership.getStatus()
                 == MembershipStatus.CANCELLED) {
 
             throw new IllegalStateException(
                     "Cancelled membership cannot be activated"
             );
+        }
+
+
+        /*
+         * Already active means nothing needs
+         * to be changed.
+         */
+        if (membership.getStatus()
+                == MembershipStatus.ACTIVE) {
+
+            return;
         }
 
 
@@ -558,11 +536,57 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
 
-    /*
-     * ---------------------------------------------------------
-     * CONVERT NGN TO KOBO
-     * ---------------------------------------------------------
-     */
+    // =========================================================
+    // CREATE PAYMENT SUCCESS NOTIFICATION
+    // =========================================================
+
+    private void createPaymentSuccessfulNotification(
+            Payment payment
+    ) {
+
+        Membership membership =
+                payment.getMembership();
+
+
+        if (membership == null) {
+
+            return;
+        }
+
+
+        if (membership.getUser() == null) {
+
+            return;
+        }
+
+
+        if (membership.getUser().getId() == null) {
+
+            return;
+        }
+
+
+        notificationService.createNotification(
+
+                membership
+                        .getUser()
+                        .getId(),
+
+                NotificationType.PAYMENT_SUCCESSFUL,
+
+                "Payment Successful",
+
+                "Your membership payment was successfully processed.",
+
+                payment.getId()
+        );
+    }
+
+
+    // =========================================================
+    // CONVERT TO MINOR CURRENCY UNIT
+    // =========================================================
+
     private long toMinorUnit(
             BigDecimal amount
     ) {
@@ -581,11 +605,10 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
 
-    /*
-     * ---------------------------------------------------------
-     * GENERATE UNIQUE PAYMENT REFERENCE
-     * ---------------------------------------------------------
-     */
+    // =========================================================
+    // GENERATE PAYMENT REFERENCE
+    // =========================================================
+
     private String generateReference() {
 
         return "FIT-"
@@ -599,11 +622,10 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
 
-    /*
-     * ---------------------------------------------------------
-     * VALIDATE PAYSTACK RESPONSE
-     * ---------------------------------------------------------
-     */
+    // =========================================================
+    // VALIDATE PAYSTACK PAYMENT
+    // =========================================================
+
     private void validateGatewayPayment(
             Payment payment,
             PaystackVerifyResponse.Data data
@@ -631,8 +653,8 @@ public class PaymentServiceImpl implements PaymentService {
                 );
 
 
-        if (expectedAmount
-                != data.amount()) {
+        if (data.amount() == null
+                || expectedAmount != data.amount()) {
 
             throw new IllegalStateException(
                     "Payment amount mismatch"
@@ -656,11 +678,10 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
 
-    /*
-     * ---------------------------------------------------------
-     * MAP PAYSTACK STATUS
-     * ---------------------------------------------------------
-     */
+    // =========================================================
+    // MAP PAYSTACK STATUS
+    // =========================================================
+
     private PaymentStatus mapPaystackStatus(
             String status
     ) {

@@ -27,17 +27,22 @@ public interface MembershipRepository
     );
 
     /*
+     * Count memberships by status.
+     */
+    long countByStatus(
+            MembershipStatus status
+    );
+
+    /*
      * Find the most recent membership for a user.
-     *
-     * Membership has a 'user' property, not a 'member' property.
      */
     Optional<Membership> findFirstByUserOrderByEndDateDesc(
             User user
     );
 
     /*
-     * Check whether a user has a membership with
-     * the specified status.
+     * Check whether a user has a membership
+     * with the specified status.
      */
     boolean existsByUserIdAndStatus(
             Long userId,
@@ -45,11 +50,29 @@ public interface MembershipRepository
     );
 
     /*
-     * Find memberships that expired before a given date
-     * and have the specified status.
+     * Find memberships that have already expired.
      */
     List<Membership> findAllByEndDateBeforeAndStatus(
             LocalDate date,
             MembershipStatus status
+    );
+
+    /*
+     * Find memberships ending between two dates.
+     */
+    List<Membership> findAllByStatusAndEndDateBetween(
+            MembershipStatus status,
+            LocalDate startDate,
+            LocalDate endDate
+    );
+
+    /*
+     * Count active memberships expiring within
+     * a specified date range.
+     */
+    long countByStatusAndEndDateBetween(
+            MembershipStatus status,
+            LocalDate startDate,
+            LocalDate endDate
     );
 }

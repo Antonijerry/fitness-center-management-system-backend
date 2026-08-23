@@ -1040,6 +1040,166 @@ test:: Yes. Since your backend is now running successfully, the next step is to 
 
        Never put sk_test_... in React or any frontend code. Paystack specifically requires the secret key to remain on your server
 
+
+
+
+##NOTIFICATIONS MODULE:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+The goal is to make the fitness center automatically notify members about important events such as:
+
+Successful payment
+Payment failure
+Membership activation
+Membership expiration
+Class booking
+Class cancellation
+Workout assignment
+Attendance/check-in events
+Important system announcements
+
+                ┌──────────────────────┐
+                │     APPLICATION      │
+                └──────────┬───────────┘
+                           │
+                           ▼
+                ┌──────────────────────┐
+                │ NotificationService  │
+                └──────────┬───────────┘
+                           │
+             ┌─────────────┼──────────────┐
+             ▼             ▼              ▼
+        DATABASE         EMAIL          FUTURE
+       NOTIFICATION     DELIVERY       CHANNELS
+             │             │              │
+             ▼             ▼              ▼
+          IN-APP        SMTP/Email       SMS/Push
+
+src/main/java/com/fitnesscenter/notification/
+│
+├── controller/
+│   └── NotificationController.java
+│
+├── dto/
+│   ├── NotificationResponse.java
+│   └── UnreadNotificationCountResponse.java
+│
+├── entity/
+│   ├── Notification.java
+│   ├── NotificationChannel.java
+│   ├── NotificationStatus.java
+│   └── NotificationType.java
+│
+├── repository/
+│   └── NotificationRepository.java
+│
+└── service/
+    ├── NotificationService.java
+    └── NotificationServiceImpl.java
+
+    Later, when we add email delivery:
+
+    notification/
+    └── sender/
+        ├── NotificationSender.java
+        └── EmailNotificationSender.java
+add flyway-migration
+V15__create_notifications_table.sql
+
+
+##COMPLETE NOTIFICATION SYSTEM::::::::::::::::::::::::
+                         FITNESS SYSTEM
+                              │
+             ┌────────────────┼─────────────────┐
+             │                │                 │
+             ▼                ▼                 ▼
+          Payment         Membership        Attendance
+             │                │                 │
+             └────────────────┼─────────────────┘
+                              ▼
+                     Application Events
+                              │
+                              ▼
+                    Notification Service
+                              │
+                 ┌────────────┼────────────┐
+                 │            │            │
+                 ▼            ▼            ▼
+              IN-APP        EMAIL         FUTURE
+                 │            │
+                 ▼            ▼
+             Database       Mail Server
+                              │
+                              ▼
+                           Member
+And for scheduled notifications:
+
+Membership
+    │
+    ▼
+Expiration Scheduler
+    │
+    ▼
+Notification Service
+    │
+    ├── IN_APP
+    │
+    └── EMAIL
+
+
+    for email delivery add this dependency
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-mail</artifactId>
+    </dependency>
+
+    add email properties at yaml and update .env.example with the values of email properties there
+add this:
+follow this steps to get your 16 pasword for your email properties:
+1. Generate the Gmail App Password
+
+In your Google account:
+
+Go to your Google Account.
+Open Security.
+Make sure 2-Step Verification is enabled.
+Under 2-Step Verification, find App passwords.
+Create a new App Password.
+Give it a name such as:
+Fitness Management System
+
+Google will generate something like:
+
+abcdefghijklmnop
+
+
+    V16__complete_notifications.sql
+
+    retry flow of the scheduler:
+    EMAIL
+     │
+     ▼
+    SEND
+     │
+     ├── success ──► SENT
+     │
+     └── failure
+           │
+           ▼
+         FAILED
+           │
+           ▼
+     retry scheduler
+           │
+           ▼
+        attempt 2
+           │
+           ▼
+        attempt 3
+           │
+           ▼
+        stop after 3
+
+
+
 ##git commit for each feature
 from intellij view>tool window > terminal > select git bash and run : git init, git status, git add ., and git commit -m "chore: member-profile added to fitness management backend"
 This is important because from this point onward we can make each major feature a separate commit.

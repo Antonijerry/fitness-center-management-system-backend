@@ -177,6 +177,7 @@ public class MemberServiceImpl
     }
 
 
+
     @Override
     public List<MemberProfileResponse> search(
             String query
@@ -202,6 +203,17 @@ public class MemberServiceImpl
             members =
                     memberRepository
                             .findByPhoneContaining(
+                                    normalized
+                            );
+        }
+
+        if (members.isEmpty()) {
+
+            members =
+                    memberRepository
+                            .findByUserFirstNameContainingIgnoreCaseOrUserLastNameContainingIgnoreCaseOrUserEmailContainingIgnoreCase(
+                                    normalized,
+                                    normalized,
                                     normalized
                             );
         }

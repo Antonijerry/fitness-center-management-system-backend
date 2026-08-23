@@ -16,7 +16,6 @@ public class CustomUserDetailsService
 
     private final UserRepository userRepository;
 
-
     @Override
     public UserDetails loadUserByUsername(
             String username
@@ -38,7 +37,10 @@ public class CustomUserDetailsService
                                 .stream()
                                 .map(role ->
                                         new SimpleGrantedAuthority(
-                                                "ROLE_" + role.getName()
+                                                "ROLE_" +
+                                                        role.getName()
+                                                                .trim()
+                                                                .toUpperCase()
                                         )
                                 )
                                 .toList()
