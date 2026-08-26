@@ -103,7 +103,11 @@ public class SecurityConfig {
         );
 
         configuration.setAllowedHeaders(
-                List.of("*")
+                List.of(
+                        "Authorization",
+                        "Content-Type",
+                        "Accept"
+                )
         );
 
         configuration.setAllowCredentials(true);

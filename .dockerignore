@@ -1,0 +1,16 @@
+target/
+.git/
+.gitignore
+.idea/
+.vscode/
+*.iml
+
+.env
+
+README.md
+
+node_modules/
+dist/
+
+logs/
+*.log

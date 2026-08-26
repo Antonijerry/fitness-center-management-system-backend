@@ -1,14 +1,18 @@
 spring:
-
   application:
     name: fitness-management-system
 
   profiles:
-    active: dev
-
+    active: ${SPRING_PROFILES_ACTIVE:prod}
 
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
+
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+    include-exception: false
 
   servlet:
     context-path: /
@@ -36,3 +40,7 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
 
+app:
+  initial-admin:
+    email: ${ADMIN_EMAIL:admin@fitnesscenter.com}
+    password: ${ADMIN_PASSWORD:ChangeMe123!}
