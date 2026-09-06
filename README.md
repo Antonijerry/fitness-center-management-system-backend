@@ -1,214 +1,708 @@
-# Automated Fitness Center Management System — Backend
+# 🏋️ Fitness Center Management System — Backend
 
-A production-ready RESTful backend for managing the operations of a modern fitness center. The system provides secure APIs for authentication, users, members, memberships, payments, attendance, trainers, classes, bookings, workouts, notifications, and reporting.
+A **production-oriented fitness center management backend** built with Java 21 and Spring Boot, providing a secure, modular REST API for managing members, memberships, payments, attendance, trainers, classes, bookings, workouts, notifications, and reporting.
 
-## 🚀 Technology Stack
+The system was designed to solve the operational challenges of managing a modern fitness center through a centralized backend platform, with a strong focus on **security, modular architecture, data integrity, API design, automated testing, database migrations, and containerized deployment**.
 
-- **Java 21**
-- **Spring Boot 3.5.15**
-- **Spring Security**
-- **Spring Data JPA / Hibernate**
-- **MySQL 8.4**
-- **Flyway** — Database migration
-- **JWT** — Authentication and authorization
-- **OpenAPI / Swagger** — API documentation
-- **Docker & Docker Compose**
-- **JUnit 5** — Testing
-- **Testcontainers** — Integration testing
-- **Maven** — Build and dependency management
+---
 
-## 📦 Core Modules
+## 🎯 Problem Solved
 
-The backend is organized around the following major modules:
+Fitness centers often rely on disconnected processes for managing members, subscriptions, payments, attendance, trainers, and classes, making it difficult to maintain accurate and consistent operational data.
 
-- 🔐 Authentication & Authorization
-- 👤 User Management
-- 🧑‍💼 Member Management
-- 🎫 Membership Management
-- 💳 Payment Management
-- 🕐 Attendance Management
-- 🏋️ Trainer Management
-- 📅 Class Scheduling
-- 📝 Class Booking
-- 💪 Workout Management
-- 🔔 Notifications
-- 📊 Reports
+This system provides a centralized backend that **automates core fitness-center operations, enforces secure access, maintains reliable transactional data, and exposes a scalable REST API for web and mobile clients.**
 
-## 🔐 Authentication
+---
 
-The application uses **JWT-based authentication** with role-based authorization.
+# 💡 Technical Problems Solved
 
-Supported roles include:
+This project was built around real backend engineering problems rather than simply implementing CRUD operations.
 
-- `ADMIN`
-- `MANAGER`
-- `RECEPTIONIST`
-- `TRAINER`
-- `MEMBER`
+### 1. Managing Complex Fitness Operations
+
+**Problem:**
+A fitness center has multiple interconnected business processes—memberships, payments, attendance, classes, bookings, trainers, and workouts.
+
+**Solution:**
+The backend is organized into independent business modules with clearly defined responsibilities.
+
+```text
+Authentication
+      │
+      ├── Users
+      ├── Members
+      ├── Memberships
+      ├── Payments
+      ├── Attendance
+      ├── Trainers
+      ├── Classes
+      ├── Bookings
+      ├── Workouts
+      ├── Notifications
+      └── Reports
+```
+
+**Engineering benefit:**
+The modular structure makes the system easier to maintain, test, extend, and eventually evolve into independently deployable services if required.
+
+---
+
+### 2. Securing Sensitive APIs
+
+**Problem:**
+Fitness-center systems contain sensitive user information and financial data that should not be accessible to unauthorized users.
+
+**Solution:**
+Spring Security and JWT-based authentication protect API endpoints and enforce role-based access control.
+
+Supported roles:
+
+```text
+ADMIN
+MANAGER
+RECEPTIONIST
+TRAINER
+MEMBER
+```
+
+**Engineering benefit:**
+Different users receive access appropriate to their responsibilities instead of exposing every operation to every authenticated user.
+
+---
+
+### 3. Managing Authentication Tokens
+
+**Problem:**
+Long-lived access tokens increase security risk, while extremely short-lived tokens can negatively affect user experience.
+
+**Solution:**
+The application implements an access-token and refresh-token strategy.
+
+```text
+Access Token
+    │
+    ├── Short-lived
+    └── API authentication
+
+Refresh Token
+    │
+    ├── Longer-lived
+    └── Access-token renewal
+```
+
+This provides a balance between security and usability.
+
+---
+
+### 4. Maintaining Database Consistency
+
+**Problem:**
+Manually modifying production database schemas makes deployments unreliable and difficult to reproduce.
+
+**Solution:**
+Flyway is used for version-controlled database migrations.
+
+```text
+V1__initial_schema.sql
+V2__add_memberships.sql
+V3__add_payments.sql
+V4__add_attendance.sql
+...
+```
+
+**Engineering benefit:**
+Database changes become reproducible, traceable, and consistent across development, testing, and deployment environments.
+
+---
+
+### 5. Handling Financial Transactions
+
+**Problem:**
+Payment operations must maintain accurate financial records and avoid inconsistent database state.
+
+**Solution:**
+Payment-related business operations are handled through transactional service boundaries and persistent payment records.
+
+The architecture separates payment processing from the rest of the business logic, allowing external payment providers to be integrated without tightly coupling provider-specific logic to core domain operations.
+
+---
+
+### 6. Preventing Invalid Business Data
+
+**Problem:**
+REST APIs can receive malformed or invalid data from clients.
+
+**Solution:**
+
+* Request validation
+* DTO-based API contracts
+* Service-layer business validation
+* Consistent exception handling
+* Structured API responses
+
+This prevents invalid data from unnecessarily reaching the persistence layer.
+
+---
+
+### 7. Maintaining Consistent Error Responses
+
+**Problem:**
+Without centralized exception handling, every controller can return different error formats.
+
+**Solution:**
+A global exception-handling strategy provides consistent API error responses.
+
+Conceptually:
+
+```text
+Controller
+     │
+     ▼
+Service
+     │
+     ├── Business Exception
+     ├── Validation Exception
+     └── Resource Not Found
+             │
+             ▼
+    Global Exception Handler
+             │
+             ▼
+       Consistent JSON
+```
+
+This makes the API easier for frontend developers and external clients to consume.
+
+---
+
+### 8. Testing Database-Dependent Functionality
+
+**Problem:**
+Mocking a database completely may hide integration problems involving JPA, Hibernate, SQL, constraints, and migrations.
+
+**Solution:**
+The project uses **Testcontainers** to execute integration tests against a real containerized database environment.
+
+This provides stronger confidence that application code and database behavior work together correctly.
+
+---
+
+# 🏗️ Architecture
+
+The backend follows a **modular layered architecture**.
+
+```text
+                    CLIENT
+                      │
+                      ▼
+               REST Controllers
+                      │
+                      ▼
+                 DTO / Validation
+                      │
+                      ▼
+                Service Layer
+                      │
+          ┌───────────┼───────────┐
+          │           │           │
+          ▼           ▼           ▼
+      Repository   Security    Integration
+          │
+          ▼
+      Hibernate/JPA
+          │
+          ▼
+        MySQL
+```
+
+Business functionality is separated into modules:
+
+```text
+src/main/java/com/fitnesscenter/
+
+├── auth/
+├── user/
+├── member/
+├── membership/
+├── payment/
+├── attendance/
+├── trainer/
+├── classmanagement/
+├── booking/
+├── workout/
+├── notification/
+├── report/
+└── config/
+```
+
+This approach reduces coupling between unrelated business capabilities while keeping the application manageable as a modular monolith.
+
+---
+
+# 🔐 Authentication & Authorization
+
+The application uses **Spring Security + JWT** for API authentication and role-based authorization.
+
+### Supported Roles
+
+| Role         | Typical Responsibility           |
+| ------------ | -------------------------------- |
+| ADMIN        | Full system administration       |
+| MANAGER      | Fitness-center operations        |
+| RECEPTIONIST | Member and attendance operations |
+| TRAINER      | Training and workout management  |
+| MEMBER       | Member-facing functionality      |
+
+### Authentication Flow
+
+```text
+Client
+  │
+  │ Credentials
+  ▼
+Authentication API
+  │
+  ▼
+Spring Security
+  │
+  ▼
+User Authentication
+  │
+  ▼
+JWT Generation
+  │
+  ├── Access Token
+  └── Refresh Token
+  │
+  ▼
+Authenticated API Requests
+```
 
 ### Authentication Endpoints
 
-```text
+```http
 POST /api/v1/auth/register
 POST /api/v1/auth/login
 POST /api/v1/auth/refresh
 POST /api/v1/auth/logout
+```
 
-Protected endpoints require a valid JWT access token.
+Protected requests use:
 
+```http
 Authorization: Bearer <access-token>
-🌐 API
+```
 
-The API uses versioned REST endpoints.
+---
 
-Base URL
-http://localhost:8080/api/v1
+# 📦 Core Modules
 
-Examples:
+## 👤 User Management
 
+Provides functionality for managing system users and their assigned roles.
+
+## 🧑‍💼 Member Management
+
+Manages fitness-center members and their operational information.
+
+## 🎫 Membership Management
+
+Handles membership plans, subscriptions, status, and membership lifecycle.
+
+## 💳 Payment Management
+
+Maintains payment records and payment-related operations.
+
+## 🕐 Attendance Management
+
+Records member attendance and provides attendance data for operational reporting.
+
+## 🏋️ Trainer Management
+
+Manages trainers and their associated fitness-center activities.
+
+## 📅 Class Scheduling
+
+Provides functionality for creating and managing fitness classes and schedules.
+
+## 📝 Class Booking
+
+Handles member bookings and class participation.
+
+## 💪 Workout Management
+
+Supports workout-related records and training activities.
+
+## 🔔 Notifications
+
+Provides notification functionality for communicating important system events.
+
+## 📊 Reporting
+
+Aggregates operational information for fitness-center reporting and decision-making.
+
+---
+
+# 🌐 REST API
+
+All APIs are versioned under:
+
+```text
+/api/v1
+```
+
+### Example endpoints
+
+```text
 /api/v1/users
 /api/v1/members
 /api/v1/memberships
 /api/v1/payments
 /api/v1/attendance
-📚 API Documentation
+/api/v1/trainers
+/api/v1/classes
+/api/v1/bookings
+/api/v1/workouts
+/api/v1/notifications
+/api/v1/reports
+```
 
-When the application is running, OpenAPI/Swagger documentation is available at:
+Versioned APIs make future API evolution easier without immediately breaking existing clients.
 
+---
+
+# 📚 API Documentation
+
+The API is documented using **OpenAPI/Swagger**.
+
+When running locally:
+
+```text
 http://localhost:8080/swagger-ui.html
+```
 
-The OpenAPI specification can also be accessed through:
+OpenAPI specification:
 
+```text
 http://localhost:8080/v3/api-docs
-⚙️ Configuration
+```
 
-The application uses environment variables for sensitive configuration such as database credentials, JWT secrets, email credentials, and payment configuration.
+Swagger provides an interactive interface for exploring and testing available endpoints.
 
-Create a .env file locally and provide the required values.
+---
 
-Example:
+# 🛠️ Technology Stack
 
-MYSQL_DATABASE=fitness_center_db
-MYSQL_USER=fitness_user
-MYSQL_PASSWORD=your_database_password
-MYSQL_ROOT_PASSWORD=your_root_password
+### Backend
 
-DB_USERNAME=fitness_user
-DB_PASSWORD=your_database_password
+* **Java 21**
+* **Spring Boot 3.5.15**
+* Spring Security
+* Spring Data JPA
+* Hibernate
+* Maven
 
-MAIL_HOST=smtp.gmail.com
-MAIL_PORT=587
-MAIL_USERNAME=your_email
-MAIL_PASSWORD=your_app_password
+### Security
 
-ADMIN_EMAIL=admin@fitnesscenter.com
+* JWT authentication
+* Role-based authorization
+* Password hashing
+* Authentication filters
+* Refresh tokens
+* CORS configuration
 
-Important: Never commit .env files, passwords, JWT secrets, API keys, or other credentials to GitHub.
+### Database
 
-Use .env.example to document required environment variables without exposing real credentials.
+* MySQL 8.4
+* Hibernate/JPA
+* Flyway migrations
 
-🗄️ Database
+### Testing
 
-The application uses:
+* JUnit 5
+* Mockito
+* Spring Boot Test
+* Testcontainers
 
-MySQL 8.4
-Spring Data JPA
-Hibernate
-Flyway
+### API
 
-Flyway is used to manage database schema migrations and maintain database version history.
+* REST
+* OpenAPI
+* Swagger UI
 
-Database name:
+### DevOps
 
+* Docker
+* Docker Compose
+* Environment-based configuration
+
+---
+
+# 🗄️ Database Architecture
+
+The system uses **MySQL 8.4** as its relational database.
+
+Major domain areas include:
+
+```text
+Users
+  │
+  ├── Roles
+  │
+  └── Authentication
+
+Members
+  │
+  ├── Memberships
+  ├── Payments
+  ├── Attendance
+  ├── Bookings
+  └── Workouts
+
+Trainers
+  │
+  └── Classes
+          │
+          └── Bookings
+```
+
+JPA/Hibernate handles object-relational mapping while Flyway manages schema evolution.
+
+Database:
+
+```text
 fitness_center_db
-💻 Running Locally
-Prerequisites
+```
 
-Make sure the following are installed:
+---
 
-Java 21
-Maven
-MySQL 8.4
-Git
-Docker Desktop (optional but recommended)
-1. Clone the repository
-git clone https://github.com/YOUR_USERNAME/fitness-management-system.git
+# 🔄 Transaction Management
 
-Navigate into the project:
+Business operations that modify multiple related records are designed around transactional service boundaries.
 
-cd fitness-management-system
-2. Configure environment variables
+For example:
 
-Create a .env file and configure your database and application credentials.
+```text
+Membership Operation
+       │
+       ├── Update Membership
+       ├── Update Related State
+       └── Persist Changes
+              │
+              ▼
+        Transaction Commit
+```
 
-3. Build the application
-mvn clean verify
-4. Run the application
-mvn spring-boot:run
+If a failure occurs during the transaction, changes can be rolled back to prevent partial database updates.
 
-The backend will start on:
+This helps maintain **data integrity across related operations**.
 
-http://localhost:8080
-🐳 Running with Docker
+---
 
-The backend can also be run using Docker Compose.
+# 🐳 Docker Architecture
 
-Start the services:
+The application supports containerized deployment using Docker Compose.
 
+```text
+             Docker Compose
+                   │
+        ┌──────────┴──────────┐
+        │                     │
+        ▼                     ▼
+ Fitness Backend           MySQL
+ Spring Boot               Database
+        │                     │
+        └──────────┬──────────┘
+                   │
+                   ▼
+              Persistent
+                Volume
+```
+
+Start the application:
+
+```bash
 docker compose up -d --build
+```
 
-Check running containers:
+View containers:
 
+```bash
 docker ps
+```
 
 View backend logs:
 
+```bash
 docker logs fitness-backend
+```
 
-View MySQL logs:
+View database logs:
 
+```bash
 docker logs fitness-mysql
+```
 
-Stop the services:
+Stop services:
 
+```bash
 docker compose down
+```
 
-To stop the services and remove the database volume:
+To remove the database volume:
 
+```bash
 docker compose down -v
+```
 
-Use docker compose down -v carefully because removing the volume deletes the persisted MySQL database data.
+> Use `docker compose down -v` carefully because removing the volume deletes persisted MySQL data.
 
-🏥 Health Check
+---
 
-The application exposes an Actuator health endpoint:
+# ⚙️ Configuration & Secrets
 
-GET /actuator/health
+Sensitive configuration is supplied through environment variables rather than committed source code.
+
+Typical configuration includes:
+
+```text
+DB_URL
+DB_USERNAME
+DB_PASSWORD
+
+JWT_SECRET
+
+MAIL_HOST
+MAIL_PORT
+MAIL_USERNAME
+MAIL_PASSWORD
+
+PAYMENT_API_KEY
+PAYMENT_SECRET
+
+PAYMENT_CALLBACK_URL
+```
+
+A safe repository should contain:
+
+```text
+.env.example
+```
+
+but **never real credentials**.
 
 Example:
 
+```env
+DB_USERNAME=fitness_user
+DB_PASSWORD=your_database_password
+JWT_SECRET=your_secret
+```
+
+Never commit:
+
+```text
+.env
+```
+
+or real passwords, API keys, JWT secrets, or third-party credentials.
+
+---
+
+# 🏥 Health Monitoring
+
+Spring Boot Actuator provides an application health endpoint:
+
+```http
+GET /actuator/health
+```
+
+Example:
+
+```json
 {
   "status": "UP"
 }
+```
 
-The health endpoint can be used to verify whether the application and its configured dependencies are available.
+This provides a basic mechanism for checking application availability and can be integrated into container orchestration and monitoring systems.
 
-🧪 Testing
+---
 
-Run the complete test suite with:
+# 🧪 Testing Strategy
 
+Testing is implemented at multiple levels.
+
+### Unit Testing
+
+Used for isolated business logic such as:
+
+* Service methods
+* Validation
+* Authentication logic
+* Token operations
+* Business rules
+
+### Integration Testing
+
+Used to validate interactions between:
+
+```text
+Controller
+   ↓
+Service
+   ↓
+Repository
+   ↓
+Database
+```
+
+### Testcontainers
+
+Testcontainers provides disposable containerized infrastructure for integration testing.
+
+This reduces the gap between mocked tests and real database behavior.
+
+Run the complete test suite:
+
+```bash
 mvn clean verify
+```
 
 Run tests only:
 
+```bash
 mvn test
+```
 
-The project uses JUnit and Testcontainers for automated and integration testing.
+### Maven Wrapper
 
-🏗️ Project Structure
+The project includes Maven Wrapper support, so Maven does not need to be globally installed.
 
-The backend follows a modular Spring Boot architecture.
+Windows:
 
+```powershell
+.\mvnw.cmd clean verify
+```
+
+Run the application:
+
+```powershell
+.\mvnw.cmd spring-boot:run
+```
+
+Linux/macOS:
+
+```bash
+./mvnw clean verify
+./mvnw spring-boot:run
+```
+
+---
+
+# 📁 Project Structure
+
+```text
 src/
 ├── main/
 │   ├── java/
@@ -236,141 +730,230 @@ src/
 │
 └── test/
     └── java/
-🔒 Security
+```
 
-Security features include:
+---
 
-JWT authentication
-Role-based access control
-Password hashing
-Protected REST endpoints
-Authentication filters
-Refresh token support
-CORS configuration
-Input validation
-Secure environment-based configuration
+# 💻 Running Locally
 
-Sensitive credentials are stored through environment variables rather than source code.
+## Prerequisites
 
-🚀 Production
+* Java 21
+* Git
+* Docker Desktop
+* MySQL 8.4 if running without Docker
 
-For production deployment, the application supports a dedicated Spring profile:
-
-prod
-
-Activate it with:
-
-SPRING_PROFILES_ACTIVE=prod
-
-Production configuration should use environment variables for:
-
-Database credentials
-JWT secrets
-Email credentials
-Payment credentials
-Other third-party API keys
-
-Never store production secrets directly in the repository.
-
-📌 Backend Status
-
-The backend provides the core REST API required to operate a complete fitness center management platform.
-
-Current capabilities
-Authentication and authorization
-User and role management
-Member management
-Membership management
-Payments
-Attendance
-Trainers
-Classes and bookings
-Workout management
-Notifications
-Reporting
-Database migrations
-API documentation
-Docker-based deployment
-👨‍💻 Development
-
-This project was developed as a Fitness Center Management System using modern backend engineering practices with Java and Spring Boot.
-
-The backend is designed to provide a scalable REST API that can be consumed by web or mobile frontend applications.
-
-📄 License
-
-This project is intended for educational and academic purposes.
-
-
-### One important correction to your original README
-
-You had:
-
-```markdown
-##run maven validation
-```bash
-mvn clean verify
-
-Then run:
+### Clone
 
 ```bash
-mvn clean spring-boot:run
+git clone https://github.com/YOUR_USERNAME/fitness-management-system.git
+cd fitness-management-system
+```
 
-That Markdown is broken because the first code block isn't closed.
+### Configure environment
 
-It should be:
+Create:
 
-## Run Maven Validation
+```text
+.env
+```
 
-```bash
-mvn clean verify
-
-Then run the application:
-
-mvn spring-boot:run
-
-Also, **don't put your real `.env` values in the README**. Your GitHub repository should contain something like:
+using:
 
 ```text
 .env.example
+```
 
-but not:
+as a reference.
 
-.env
+### Build
 
-Your .gitignore should include:
+Windows:
 
-# Environment variables
-.env
-.env.*
-!.env.example
-
-# Maven
-target/
-!.mvn/wrapper/maven-wrapper.jar
-
-# IDE
-.idea/
-.vscode/
-*.iml
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
-
-# Java
-*.class
-
-# Spring Boot
-spring.log
-
-And because you're using the Maven Wrapper, you do not actually need Maven installed globally. Your earlier mvn is not recognized problem is exactly why using:
-
+```powershell
 .\mvnw.cmd clean verify
+```
 
-is preferable on your Windows machine.
+Linux/macOS:
 
-For your repository, I'd use .\mvnw.cmd clean verify and .\mvnw.cmd spring-boot:run rather than relying on mvn.
+```bash
+./mvnw clean verify
+```
+
+### Run
+
+Windows:
+
+```powershell
+.\mvnw.cmd spring-boot:run
+```
+
+Linux/macOS:
+
+```bash
+./mvnw spring-boot:run
+```
+
+The API will be available at:
+
+```text
+http://localhost:8080
+```
+
+---
+
+# 🐳 Run with Docker Compose
+
+```bash
+docker compose up -d --build
+```
+
+The backend and MySQL services will start together.
+
+Check:
+
+```bash
+docker ps
+```
+
+---
+
+# 🚀 Production Profile
+
+The application supports a dedicated Spring production profile:
+
+```text
+prod
+```
+
+Activate it using:
+
+```text
+SPRING_PROFILES_ACTIVE=prod
+```
+
+Production deployments should provide secrets through the deployment environment rather than source control.
+
+Production configuration should include:
+
+* Database credentials
+* JWT secrets
+* Email credentials
+* Payment credentials
+* Third-party API keys
+* Environment-specific URLs
+
+---
+
+# 📈 Future Improvements
+
+Planned areas for further production hardening include:
+
+* CI/CD pipeline
+* Centralized application logging
+* Distributed tracing
+* Metrics and observability
+* API rate limiting
+* Redis caching
+* Advanced audit logging
+* Automated database backups
+* Security monitoring
+* Improved payment reconciliation
+* Cloud deployment
+* Kubernetes deployment
+* Asynchronous event processing
+
+---
+
+# 🎓 Engineering Skills Demonstrated
+
+This project demonstrates practical experience with:
+
+### Backend Engineering
+
+* Java 21
+* Spring Boot
+* REST API design
+* Layered architecture
+* Modular monolith architecture
+* DTO-based API design
+* Business-service design
+* Transaction management
+
+### Security
+
+* Spring Security
+* JWT
+* Role-based access control
+* Password hashing
+* Authentication filters
+* Refresh tokens
+* CORS
+* Secure configuration
+
+### Database Engineering
+
+* MySQL
+* JPA/Hibernate
+* Relational database modeling
+* Database migrations
+* Flyway
+* Transactional data operations
+
+### Testing
+
+* JUnit 5
+* Mockito
+* Integration testing
+* Testcontainers
+* API testing
+
+### DevOps
+
+* Docker
+* Docker Compose
+* Environment configuration
+* Production profiles
+* Maven
+
+### API Engineering
+
+* RESTful API design
+* API versioning
+* OpenAPI
+* Swagger
+* Validation
+* Global exception handling
+
+---
+
+# 🏆 Project Highlights
+
+| Area              | Implementation            |
+| ----------------- | ------------------------- |
+| Architecture      | Modular Monolith          |
+| Backend           | Java 21 + Spring Boot     |
+| Security          | Spring Security + JWT     |
+| Authorization     | Role-Based Access Control |
+| Database          | MySQL 8.4                 |
+| ORM               | JPA / Hibernate           |
+| Migrations        | Flyway                    |
+| API Documentation | OpenAPI / Swagger         |
+| Testing           | JUnit + Testcontainers    |
+| Deployment        | Docker + Docker Compose   |
+| Configuration     | Environment Variables     |
+| Monitoring        | Spring Boot Actuator      |
+
+---
+
+# 👨‍💻 Developer
+
+Built as a backend engineering project demonstrating the design and implementation of a **secure, modular, database-driven business management platform** using modern Java and Spring Boot practices.
+
+The project focuses on solving real operational and engineering challenges rather than implementing simple CRUD functionality.
+
+---
+
+## 📄 License
+
+This project is available for educational, portfolio, and demonstration purposes.
